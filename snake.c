@@ -6,10 +6,11 @@
 
 #define N 10
 #define HEAD tab[Hx][Hy]
+#define TAIL tab[Tx][Ty]
 
 static int counter=0;
 static int Hx,Hy,Tx,Ty;
-static bool czyZjedzone;
+static bool czyZjedzone=true;
 
 static struct parametry{
 	bool head;
@@ -140,26 +141,51 @@ static void wyswietl(){
 static void ruch(char c){
 	if(c=='w')
 		if(!tab[Hx-1][Hy].isWall&&!tab[Hx-1][Hy].isSnake){
-			
+			HEAD.nextU=true;
+			HEAD.head=false;
+			Hx--;
 		}
 	if(c=='a')
 		if(!tab[Hx][Hy-1].isWall&&!tab[Hx][Hy-1].isSnake){
-			
+			HEAD.nextL=true;
+			HEAD.head=false;
+			Hy--;
 		}
 	if(c=='s')
 		if(!tab[Hx+1][Hy].isWall&&!tab[Hx+1][Hy].isSnake){
-	
+			HEAD.nextD=true;
+			HEAD.head=false;
+			Hx++;
 		}
 	if(c=='d')
 		if(!tab[Hx][Hy+1].isWall&&!tab[Hx][Hy+1].isSnake){
-			
+			HEAD.nextR=true;
+			HEAD.head=false;
+			Hy++;
 		}
-	
+	HEAD.isSnake=true;
+	HEAD.head=true;
 	
 	if(czyZjedzone)
 		czyZjedzone=false;
 	else{
-		//...
+		if(TAIL.nextU){
+			cl(Tx,Ty);
+			Tx--;
+		}
+		if(TAIL.nextL){
+			cl(Tx,Ty);
+			Ty--;
+		}
+		if(TAIL.nextD){
+			cl(Tx,Ty);
+			Tx++;
+		}
+		if(TAIL.nextR){
+			cl(Tx,Ty);
+			Ty++;
+		}
+		TAIL.tail=true;
 	}
 	
 }
@@ -171,12 +197,12 @@ static void load(){}				//!!!
 void snake(){
 	spawn();
 	fruit();
-	wyswietl();
-/*
 	while(true){
 		wyswietl();
 		while(true){//petla do ruchu
 			char c=getchar();
+			if(c=='\n')
+				continue;
 			//potencjalne wyjscie, save, load, newGame dla 1,2,3,4
 			if(c=='w')
 				if(tab[Hx-1][Hy].isWall||tab[Hx-1][Hy].isSnake)
@@ -191,11 +217,12 @@ void snake(){
 				if(tab[Hx][Hy+1].isWall||tab[Hx][Hy+1].isSnake)
 					continue;
 			ruch(c);
+			break;
 		}
-		if(HEAD.fruit){
-			HEAD.fruit=false;
-			fruit();
-			zjedzenie();
-		}
-	}*/
+//		if(HEAD.fruit){
+//			HEAD.fruit=false;
+//			fruit();
+//			zjedzenie();
+//		}
+	}
 }
