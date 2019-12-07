@@ -4,10 +4,12 @@
 
 int main(){
 	intro();
-	char c;
-	scanf("%c",&c);
-	if(c=='a')
-		snake();	
-
+	while(true)
+		if(kbhit()){
+			char c;
+			scanf("%c",&c);
+			if(c=='a')
+				snake();	
+		}
 }
 

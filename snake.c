@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
+//#include <conio.h>
 
 #define N 10
 #define HEAD tab[Hx][Hy]
@@ -49,7 +50,7 @@ static bool koniec(){
 static int wynik(){
 	if(counter==99)
 		return 1;//wygrana
-	if(false)
+	if(koniec())
 		return 2;//przegrana
 	return 0;//neutralne
 }
@@ -221,29 +222,33 @@ void snake(){
 			}
 			break;					//i co dalej?
 		}
-		//wyswietl();
+		system("clear");
+		wyswietl();
 		while(true){//petla do ruchu
-			system("clear");//???
-			wyswietl();
-			char c=getchar();
-			if(c=='\n')
-				continue;
-			//potencjalne wyjscie, save, load, newGame dla 1,2,3,4
-			if(c=='w')
-				if(tab[Hx-1][Hy].isWall||tab[Hx-1][Hy].isSnake)
+			if(kbhit()){
+				system("clear");
+				wyswietl();
+			//if(kbhit()){
+				char c=getchar();
+				if(c=='\n')
 					continue;
-			if(c=='a')
-				if(tab[Hx][Hy-1].isWall||tab[Hx][Hy-1].isSnake)
-					continue;
-			if(c=='s')
-				if(tab[Hx+1][Hy].isWall||tab[Hx+1][Hy].isSnake)
-					continue;
-			if(c=='d')
-				if(tab[Hx][Hy+1].isWall||tab[Hx][Hy+1].isSnake)
-					continue;
-			if(c=='w'||c=='a'||c=='s'||c=='d'){
-				ruch(c);
-				break;
+				//potencjalne wyjscie, save, load, newGame dla 1,2,3,4
+				if(c=='w')
+					if(tab[Hx-1][Hy].isWall||tab[Hx-1][Hy].isSnake)
+						continue;
+				if(c=='a')
+					if(tab[Hx][Hy-1].isWall||tab[Hx][Hy-1].isSnake)
+						continue;
+				if(c=='s')
+					if(tab[Hx+1][Hy].isWall||tab[Hx+1][Hy].isSnake)
+						continue;
+				if(c=='d')
+					if(tab[Hx][Hy+1].isWall||tab[Hx][Hy+1].isSnake)
+						continue;
+				if(c=='w'||c=='a'||c=='s'||c=='d'){
+					ruch(c);
+					break;
+				}
 			}
 		}
 		if(HEAD.fruit){
