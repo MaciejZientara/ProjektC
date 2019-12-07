@@ -10,7 +10,7 @@
 
 static int counter=0;
 static int Hx,Hy,Tx,Ty;
-static bool czyZjedzone=true;
+static bool czyZjedzone;
 
 static struct parametry{
 	bool head;
@@ -55,6 +55,10 @@ static int wynik(){
 }
 
 static void spawn(){	
+	for(int i=0; i<N+2; i++)
+		for(int j=0; j<N+2; j++)
+			if(i==0 || j==0 || i==N+1 || j==N+1)
+				tab[i][j].isWall=true;
 	srand(time(0));
 	int tmp=rand()%100;
 	int n=tmp%10+1,m=(tmp/10)%10+1;
@@ -111,7 +115,7 @@ static void zjedzenie(){
 static void wyswietl(){
 	for(int i=0; i<N+2; i++){
 		for(int j=0; j<N+2; j++){
-			if(i==0 || j==0 || i==N+1 || j==N+1){
+			if(tab[i][j].isWall){
 				printf("@");
 				continue;
 			}
@@ -132,7 +136,8 @@ static void wyswietl(){
 				continue;
 			}
 			printf(" ");
-		}
+		}	
+		if(i==0)printf("\t\t\t\t\t\t\tscore=%d",counter+1);
 		printf("\n");
 	}
 
@@ -172,20 +177,27 @@ static void ruch(char c){
 		if(TAIL.nextU){
 			cl(Tx,Ty);
 			Tx--;
+			TAIL.tail=true;
+			return;
 		}
 		if(TAIL.nextL){
 			cl(Tx,Ty);
 			Ty--;
+			TAIL.tail=true;
+			return;
 		}
 		if(TAIL.nextD){
 			cl(Tx,Ty);
 			Tx++;
+			TAIL.tail=true;
+			return;
 		}
 		if(TAIL.nextR){
 			cl(Tx,Ty);
 			Ty++;
+			TAIL.tail=true;
+			return;
 		}
-		TAIL.tail=true;
 	}
 	
 }
@@ -198,8 +210,21 @@ void snake(){
 	spawn();
 	fruit();
 	while(true){
-		wyswietl();
+		int tmp=wynik();
+		if(tmp){
+			system("clear");
+			if(tmp==1){
+				printf("YOU WIN!");
+			}
+			else{
+				printf("YOU LOSE!");
+			}
+			break;					//i co dalej?
+		}
+		//wyswietl();
 		while(true){//petla do ruchu
+			system("clear");//???
+			wyswietl();
 			char c=getchar();
 			if(c=='\n')
 				continue;
@@ -216,13 +241,15 @@ void snake(){
 			if(c=='d')
 				if(tab[Hx][Hy+1].isWall||tab[Hx][Hy+1].isSnake)
 					continue;
-			ruch(c);
-			break;
+			if(c=='w'||c=='a'||c=='s'||c=='d'){
+				ruch(c);
+				break;
+			}
 		}
-//		if(HEAD.fruit){
-//			HEAD.fruit=false;
-//			fruit();
-//			zjedzenie();
-//		}
+		if(HEAD.fruit){
+			HEAD.fruit=false;
+			fruit();
+			zjedzenie();
+		}
 	}
 }
