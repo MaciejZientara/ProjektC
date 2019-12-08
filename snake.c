@@ -9,7 +9,7 @@
 #define HEAD tab[Hx][Hy]
 #define TAIL tab[Tx][Ty]
 
-static int counter=0;
+static int counter=1;
 static int Hx,Hy,Tx,Ty;
 static bool czyZjedzone;
 
@@ -48,7 +48,7 @@ static bool koniec(){
 }
 
 static int wynik(){
-	if(counter==99)
+	if(counter==N*N)
 		return 1;//wygrana
 	if(koniec())
 		return 2;//przegrana
@@ -97,6 +97,8 @@ static void spawn(){
 }
 
 static void fruit(){
+	if(counter==N*N)
+		return;
 	srand(time(0));
 	while(true){
 		int tmp=rand()%100;
@@ -138,7 +140,7 @@ static void wyswietl(){
 			}
 			printf(" ");
 		}	
-		if(i==0)printf("\t\t\t\t\t\t\tscore=%d",counter+1);
+		if(i==0)printf("\t\t\t\t\t\t\tscore=%d",counter);
 		printf("\n");
 	}
 
@@ -218,7 +220,8 @@ void snake(){
 				printf("YOU WIN!");
 			}
 			else{
-				printf("YOU LOSE!");
+				printf("YOU LOSE!\n");
+				printf("YOUR SCORE = %d",counter);
 			}
 			break;					//i co dalej?
 		}
