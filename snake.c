@@ -9,7 +9,7 @@
 #define HEAD tab[Hx][Hy]
 #define TAIL tab[Tx][Ty]
 
-static int counter=1;
+static int counter;
 static int Hx,Hy,Tx,Ty;
 static bool czyZjedzone;
 
@@ -48,7 +48,7 @@ static bool koniec(){
 }
 
 static int wynik(){
-	if(counter==N*N)
+	if(counter==N*N-1)
 		return 1;//wygrana
 	if(koniec())
 		return 2;//przegrana
@@ -61,8 +61,8 @@ static void spawn(){
 			if(i==0 || j==0 || i==N+1 || j==N+1)
 				tab[i][j].isWall=true;
 	srand(time(0));
-	int tmp=rand()%100;
-	int n=tmp%10+1,m=(tmp/10)%10+1;
+	int tmp=rand()%(N*N);
+	int n=tmp%N+1,m=(tmp/N)%N+1;
 	tab[n][m].head=true;
 	tab[n][m].isSnake=true;
 	Hx=n,Hy=m;
@@ -101,8 +101,8 @@ static void fruit(){
 		return;
 	srand(time(0));
 	while(true){
-		int tmp=rand()%100;
-		int n=tmp%10+1,m=(tmp/10)%10+1;
+		int tmp=rand()%(N*N);
+		int n=tmp%N+1,m=(tmp/N)%N+1;
 		if(!tab[n][m].isSnake){
 			tab[n][m].fruit=true;
 			return;
@@ -141,6 +141,8 @@ static void wyswietl(){
 			printf(" ");
 		}	
 		if(i==0)printf("\t\t\t\t\t\t\tscore=%d",counter);
+		if(i==1)printf("\t\t\t\t\t\t\tmove using wsad");
+		if(i==2)printf("\t\t\t\t\t\t\tsave with 1, load with 2, exit with 3");
 		printf("\n");
 	}
 
@@ -204,14 +206,103 @@ static void ruch(char c){
 	}
 	
 }
-
-static void newGame(){}			//!!!
+//nie dziala
+/*
+static void debug(){
+	tab[N-2][1].head=true;
+	tab[N-2][1].isSnake=true;	
+	tab[N-3][1].tail=true;
+	tab[N-3][1].isSnake=true;
+	fruit();
+	while(wynik()!=1){
+		for(int i=0; i<N-1; i++){
+			ruch('d');	
+			if(HEAD.fruit){
+				HEAD.fruit=false;
+				fruit();
+				zjedzenie();
+			}
+		}
+		for(int i=0; i<(N/2)-1; i++){
+			ruch('w');
+			if(HEAD.fruit){
+				HEAD.fruit=false;
+				fruit();
+				zjedzenie();
+			}
+			for(int j=0; j<N-2; j++){
+				ruch('a');
+				if(HEAD.fruit){
+					HEAD.fruit=false;
+					fruit();
+					zjedzenie();
+				}
+			}
+			ruch('w');
+			if(HEAD.fruit){
+				HEAD.fruit=false;
+				fruit();
+				zjedzenie();
+			}
+			for(int j=0; j<N-2; j++){
+				ruch('d');
+				if(HEAD.fruit){
+					HEAD.fruit=false;
+					fruit();
+					zjedzenie();
+				}
+			}
+		}
+		for(int i=0; i<N-1; i++){
+			ruch('a');
+			if(HEAD.fruit){
+				HEAD.fruit=false;
+				fruit();
+				zjedzenie();
+			}
+		}
+		for(int i=0; i<N-1; i++){
+			ruch('s');
+			if(HEAD.fruit){
+				HEAD.fruit=false;
+				fruit();
+				zjedzenie();
+			}
+		}
+		wyswietl();
+	}
+	wyswietl();
+}
+*/
+ 
+static void newGame(){
+	spawn();
+	fruit();
+	counter=1;
+}
 static void save(){}				//!!!
 static void load(){}				//!!!
 
 void snake(){
-	spawn();
-	fruit();
+	//debug();
+	//return;
+	printf("1 NEW GAME\n2 LOAD\n3 EXIT\n");
+	while(true){
+		if(kbhit){
+			char c=getchar();
+			if(c=='3')
+				return;
+			if(c=='1'){
+				newGame();
+				break;
+			}
+			if(c=='2'){
+				load();
+				break;
+			}
+		}
+	}
+	system("clear");
 	while(true){
 		int tmp=wynik();
 		if(tmp){
@@ -235,6 +326,10 @@ void snake(){
 				char c=getchar();
 				if(c=='\n')
 					continue;
+				if(c=='3'){
+					system("clear");
+					return;
+				}
 				//potencjalne wyjscie, save, load, newGame dla 1,2,3,4
 				if(c=='w')
 					if(tab[Hx-1][Hy].isWall||tab[Hx-1][Hy].isSnake)
