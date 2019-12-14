@@ -3,17 +3,26 @@
 #include "linker.h"
 #include <gtk/gtk.h>
 
-static void csoon( GtkWidget *widget)
-{ 
-	g_print("COMING SOON!\n");
-}
+static GtkWidget *ptr;
 
+static void csoon(GtkWindow *widget)
+{
+	GtkWidget *okno, *tekst, *miejsce;
+	GtkDialogFlags flaga;
+	flaga=GTK_DIALOG_DESTROY_WITH_PARENT;
+	okno=gtk_dialog_new_with_buttons("",(GtkWindow *)ptr,flaga,("OK"),GTK_RESPONSE_NONE,NULL);
+	miejsce=gtk_dialog_get_content_area(GTK_DIALOG(okno));
+	tekst=gtk_label_new("COMING SOON!");
+	g_signal_connect_swapped(okno,"response",G_CALLBACK(gtk_widget_destroy),okno);
+	gtk_container_add(GTK_CONTAINER(miejsce),tekst);
+	gtk_widget_show_all(okno);
+}
 
 int main(int argc, char *argv[]){
 	gtk_init(&argc,&argv);
 	
 	GtkWidget *main=gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	
+	ptr=main;
 	g_signal_connect(G_OBJECT(main), "destroy",G_CALLBACK(gtk_main_quit), NULL);
 	
 	gtk_window_set_title(GTK_WINDOW(main),"PROJEKT");

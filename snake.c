@@ -150,36 +150,9 @@ static void wyswietl(){
 }
 
 static void wyswietlGTK(){
-	for(int i=0; i<N+2; i++){
-		for(int j=0; j<N+2; j++){
-			if(tab[i][j].isWall){
-				printf("@");
-				continue;
-			}
-			if(tab[i][j].head){
-				printf("H");
-				continue;
-			}
-			if(tab[i][j].tail){
-				printf("T");
-				continue;
-			}
-			if(tab[i][j].isSnake){
-				printf("B");
-				continue;
-			}
-			if(tab[i][j].fruit){
-				printf("*");
-				continue;
-			}
-			printf(" ");
-		}	
-		if(i==0)printf("\t\t\t\t\t\t\tscore=%d",counter);
-		if(i==1)printf("\t\t\t\t\t\t\tmove using wsad");
-		if(i==2)printf("\t\t\t\t\t\t\tsave with 1, load with 2, exit with 3");
-		printf("\n");
-	}
-
+	GtkWidget *gra_snake=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	
+	
 }
 
 static void ruch(char c){
