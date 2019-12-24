@@ -14,6 +14,11 @@ static int counter;
 static int Hx,Hy,Tx,Ty;
 static bool czyZjedzone;
 
+GtkWidget *Snake;
+GtkWidget *plansza;
+
+GtkWidget *TabButton[N+2][N+2];
+
 static struct parametry{
 	bool head;
 	bool isSnake;
@@ -149,10 +154,64 @@ static void wyswietl(){
 
 }
 
-static void wyswietlGTK(){
-	GtkWidget *gra_snake=gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	
-	
+static void MakePlansza(){	
+	for(int i=0; i<N+2; i++)
+		for(int j=0; j<N+2; j++){
+			if(tab[i][j].isWall){
+				TabButton[i][j]=gtk_button_new_with_label("@");
+				gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+				continue;
+			}
+			if(tab[i][j].head){
+				TabButton[i][j]=gtk_button_new_with_label("H");
+				gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+				continue;
+			}
+			if(tab[i][j].tail){
+				TabButton[i][j]=gtk_button_new_with_label("T");
+				gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+				continue;
+			}
+			if(tab[i][j].isSnake){
+				TabButton[i][j]=gtk_button_new_with_label("B");
+				gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+				continue;
+			}
+			if(tab[i][j].fruit){
+				TabButton[i][j]=gtk_button_new_with_label("*");
+				gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+				continue;
+			}
+			TabButton[i][j]=gtk_button_new_with_label("");
+			gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+		}
+}
+
+static void wyswietlGTK(){	
+	for(int i=0; i<N+2; i++)
+		for(int j=0; j<N+2; j++){
+			if(tab[i][j].isWall){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"@");
+				continue;
+			}
+			if(tab[i][j].head){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"H");
+				continue;
+			}
+			if(tab[i][j].tail){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"T");
+				continue;
+			}
+			if(tab[i][j].isSnake){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"B");
+				continue;
+			}
+			if(tab[i][j].fruit){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"*");
+				continue;
+			}
+			gtk_button_set_label((GtkButton*)TabButton[i][j]," ");
+		}
 }
 
 static void ruch(char c){
@@ -219,27 +278,114 @@ static void newGame(){
 	fruit();
 	counter=1;
 }
-static void save(){}				//!!!
-static void load(){}				//!!!
+
+static void ruchGTK(char c){
+	if(c=='w')
+		if(tab[Hx-1][Hy].isWall||tab[Hx-1][Hy].isSnake)
+			return;
+	if(c=='a')
+		if(tab[Hx][Hy-1].isWall||tab[Hx][Hy-1].isSnake)
+			return;
+	if(c=='s')
+		if(tab[Hx+1][Hy].isWall||tab[Hx+1][Hy].isSnake)
+			return;
+	if(c=='d')
+		if(tab[Hx][Hy+1].isWall||tab[Hx][Hy+1].isSnake)
+			return;
+	ruch(c);
+	
+	if(HEAD.fruit){
+		HEAD.fruit=false;
+		fruit();
+		zjedzenie();
+	}
+
+	wyswietlGTK();	
+	
+	int tmp=wynik();
+	if(tmp){
+		//printf("%d\n",tmp);
+		if(tmp==1){
+			free(P);
+			P=calloc(sizeof(struct pairGS),1);
+			P->G=Snake;
+			strcpy(P->S,"YOU WIN!");
+			dialog();
+			return;
+		}
+		else{
+			free(P);
+			P=calloc(sizeof(struct pairGS),1);
+			P->G=Snake;
+			strcpy(P->S,"YOU LOSE!");
+			dialog();
+			//printf("YOUR SCORE = %d\n",counter);
+		}
+		return;					//i co dalej?
+	}
+	return;
+}
+
+static void rW(){ruchGTK('w');return;}
+static void rA(){ruchGTK('a');return;}
+static void rS(){ruchGTK('s');return;}
+static void rD(){ruchGTK('d');return;}
+
+static GtkWidget* gra(){
+	newGame();
+	GtkWidget *Snake=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(Snake),"SNAKE");
+	gtk_window_set_position(GTK_WINDOW(Snake),GTK_WIN_POS_CENTER);
+	gtk_container_set_border_width(GTK_CONTAINER(Snake),10);
+	g_signal_connect(G_OBJECT(Snake),"destroy",G_CALLBACK(gtk_main_quit),NULL);
+
+	GtkWidget *box=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
+	gtk_container_add(GTK_CONTAINER(Snake),box);	
+
+	plansza=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(plansza), 0);
+	gtk_grid_set_row_homogeneous(GTK_GRID(plansza), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(plansza), 0);
+	gtk_grid_set_column_homogeneous(GTK_GRID(plansza), TRUE);
+	gtk_box_pack_start((GtkBox*)box,plansza,TRUE,FALSE,0);
+
+	MakePlansza();
+
+	GtkWidget *wsad=gtk_grid_new();	
+	gtk_grid_set_row_spacing(GTK_GRID(wsad), 0);
+	gtk_grid_set_row_homogeneous(GTK_GRID(wsad), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(wsad), 0);
+	gtk_grid_set_column_homogeneous(GTK_GRID(wsad), TRUE);
+	gtk_box_pack_start((GtkBox*)box,wsad,TRUE,FALSE,0);
+
+	GtkWidget *W=gtk_button_new_with_label("W");
+	g_signal_connect(G_OBJECT(W),"clicked",G_CALLBACK(rW),NULL);
+	gtk_grid_attach(GTK_GRID(wsad),W,1,0,1,1);
+	
+	GtkWidget *A=gtk_button_new_with_label("A");
+	g_signal_connect(G_OBJECT(A),"clicked",G_CALLBACK(rA),NULL);
+	gtk_grid_attach(GTK_GRID(wsad),A,0,1,1,1);
+	
+	GtkWidget *S=gtk_button_new_with_label("S");
+	g_signal_connect(G_OBJECT(S),"clicked",G_CALLBACK(rS),NULL);
+	gtk_grid_attach(GTK_GRID(wsad),S,1,1,1,1);
+	
+	GtkWidget *D=gtk_button_new_with_label("D");
+	g_signal_connect(G_OBJECT(D),"clicked",G_CALLBACK(rD),NULL);
+	gtk_grid_attach(GTK_GRID(wsad),D,2,1,1,1);
+
+	wyswietlGTK();
+	return Snake;
+}
 
 void snake(){
-	printf("1 NEW GAME\n2 LOAD\n3 EXIT\n");
-	while(true){
-		if(kbhit){
-			char c=getchar();
-			if(c=='3')
-				return;
-			if(c=='1'){
-				newGame();
-				break;
-			}
-			if(c=='2'){
-				load();
-				break;
-			}
-		}
-	}
+	//newGame();	
+	Snake=gra();
+	gtk_widget_show_all(Snake);
+	return;
+/*
 	system("clear");
+
 	while(true){
 		int tmp=wynik();
 		if(tmp){
@@ -253,6 +399,7 @@ void snake(){
 			}
 			break;					//i co dalej?
 		}
+		
 		system("clear");
 		wyswietl();
 		while(true){//petla do ruchu
@@ -291,5 +438,5 @@ void snake(){
 			fruit();
 			zjedzenie();
 		}
-	}
+	}*/
 }
