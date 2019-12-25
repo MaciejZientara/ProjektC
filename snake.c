@@ -319,6 +319,7 @@ static void ruchGTK(char c){
 			P->G=Snake;
 			strcpy(P->S,"YOU LOSE!");
 			dialog();
+//			gtk_main_quit();//???
 			//printf("YOUR SCORE = %d\n",counter);
 		}
 		return;					//i co dalej?
@@ -379,6 +380,7 @@ static GtkWidget* gra(){
 }
 
 void snake(){
+	gtk_widget_hide(Main);
 	//newGame();	
 	Snake=gra();
 	gtk_widget_show_all(Snake);

@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
 	g_signal_connect(G_OBJECT(math),"clicked",G_CALLBACK(dialog),NULL);
 	gtk_grid_attach(GTK_GRID(grid),math,0,3,1,1);
 	GtkWidget *lands=gtk_button_new_with_label("LADDERS AND SNAKES");
-	g_signal_connect(G_OBJECT(lands),"clicked",G_CALLBACK(dialog),NULL);
+	g_signal_connect(G_OBJECT(lands),"clicked",G_CALLBACK(LandS),NULL);
 	gtk_grid_attach(GTK_GRID(grid),lands,0,4,1,1);
 	GtkWidget *dam=gtk_button_new_with_label("DAM");
 	g_signal_connect(G_OBJECT(dam),"clicked",G_CALLBACK(dialog),NULL);
