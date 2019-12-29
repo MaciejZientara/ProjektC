@@ -36,7 +36,7 @@ int main(int argc, char *argv[]){
 	g_signal_connect(G_OBJECT(sneka),"clicked",G_CALLBACK(snake),Main);
 	gtk_grid_attach(GTK_GRID(grid),sneka,0,1,1,1);
 	GtkWidget *td=gtk_button_new_with_label("TOWER DEFENCE");
-	g_signal_connect(G_OBJECT(td),"clicked",G_CALLBACK(dialog),NULL);
+	g_signal_connect(G_OBJECT(td),"clicked",G_CALLBACK(TowDef),NULL);
 	gtk_grid_attach(GTK_GRID(grid),td,0,2,1,1);
 	GtkWidget *math=gtk_button_new_with_label("MATH");
 	g_signal_connect(G_OBJECT(math),"clicked",G_CALLBACK(dialog),NULL);

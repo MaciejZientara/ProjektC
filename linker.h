@@ -9,6 +9,7 @@ struct pairGS{
 	char S[15];
 }*P;
 
+void TowDef();
 void LandS();
 void snake();
 bool kbhit();
