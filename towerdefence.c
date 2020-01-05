@@ -15,7 +15,7 @@ GtkWidget *AchievementButton[7];
 GtkWidget *TabButton[N+2][N+2];//tylko raz init planszy i przyciskow, potem update
 GtkWidget *plansza;//przy okazji zloto, zycie i goldMult//pamietaj o signal connect na zakup
 GtkWidget *TabImage[5];
-GtkWidget *Box[5];//0-world,1-upgrade,2-achivement,3-level,4-zakup wiez
+GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 
 int unlocked[10];
 int upgrade[3];
@@ -88,6 +88,11 @@ static void Tmass(){
 
 }
 
+GtkWidget *closewin;
+static void deswin(){
+	gtk_widget_destroy(closewin);
+}
+
 static void clickZakup(int x, int y){
 //	GtkWidget *okno=gtk_window_new();
 //	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER")i;
@@ -109,7 +114,7 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 				x=i,y=j;
 				break;
 			}
-	if(poziomy[q].tab[x][y].tow.type)
+	if(poziomy[Q].tab[x][y].tow.type)
 		clickUpgrade(x,y);
 	else
 		clickZakup(x,y);
@@ -129,11 +134,11 @@ static void updatePlansza(){//zastapic label na image!
 				continue;
 			}
 			if(poziomy[Q].tab[i][j].road){
-				gtk_button_set_label(TabButton[i][j],"R");
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"R");
 				continue;
 			}
 			if(poziomy[Q].tab[i][j].land){
-				gtk_button_set_label(TabButton[i][j],"L");
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"L");
 				continue;
 			}
 		}
@@ -154,7 +159,7 @@ static void updateUpgrade(){
 static void updateWorld(){
 	for(int q=0; q<10; q++)
 		if(unlocked[q]!=7)
-			gtk_button_set_label(LevelButton[q],g_strdup_printf("%d.%d",i,unlocked[q]));
+			gtk_button_set_label((GtkButton*)LevelButton[q],g_strdup_printf("%d.%d",q,unlocked[q]));
 }
 
 static void update(){
@@ -163,6 +168,42 @@ static void update(){
 	updateWorld();
 }
 
+static void resup(){
+	reset();
+	update();
+	deswin();
+}
+
+static void respro(){
+	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(okno),"RESET PROGRESS");
+	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
+	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
+	closewin=okno;
+	g_signal_connect(G_OBJECT(okno),"destroy",deswin,NULL);
+
+	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
+	gtk_container_add(GTK_CONTAINER(okno),boxo);
+
+	GtkWidget *grido=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_row_homogeneous(GTK_GRID(grido), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_column_homogeneous(GTK_GRID(grido), TRUE);
+
+	gtk_box_pack_start((GtkBox*)boxo,grido,TRUE,FALSE,0);
+
+	GtkWidget *opis=gtk_button_new_with_label("ARE YOU SURE YOU WANT TO RESET YOUR PROGRESS?");
+	gtk_grid_attach(GTK_GRID(grido),opis,0,0,3,1);
+	GtkWidget *yes=gtk_button_new_with_label("YES");
+	g_signal_connect(G_OBJECT(yes),"clicked",resup,NULL);
+	gtk_grid_attach(GTK_GRID(grido),yes,0,1,1,1);
+	GtkWidget *no=gtk_button_new_with_label("NO");
+	g_signal_connect(G_OBJECT(no),"clicked",deswin,NULL);
+	gtk_grid_attach(GTK_GRID(grido),no,2,1,1,1);
+
+	gtk_widget_show_all(okno);
+}
 
 static void DFS(int q, int x, int y){
 	int nr=1;
@@ -226,7 +267,7 @@ static void showlev(GtkWidget *button, gpointer user_date){
 	gtk_container_remove(GTK_CONTAINER(TD),Box[0]);
 	gtk_container_add(GTK_CONTAINER(TD),Box[3]);
 	for(int q=0; q<10; q++)
-		if(gtk_grid_get_child_at(gridLevel,q%5,q/5)==button)
+		if(gtk_grid_get_child_at(GTK_GRID(gridLevel),q%5,q/5)==button)
 			if(unlocked[q]!=7){
 				Q=q;
 				updatePlansza();
@@ -289,7 +330,7 @@ static void init(){
 	Box[1]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//upgrade
 	Box[2]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//achievement
 	Box[3]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//level
-	Box[4]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//zakup wiez
+	//Box[4]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//zakup wiez
 
 	//plansza init
 	plansza=gtk_grid_new();
@@ -305,7 +346,7 @@ static void init(){
 		}
 	//world init
 	GtkWidget *RESET=gtk_button_new_with_label("RESET\nPROGRESS");
-	g_signal_connect(G_OBJECT(RESET),"clicked",G_CALLBACK(reset),NULL);
+	g_signal_connect(G_OBJECT(RESET),"clicked",G_CALLBACK(respro),NULL);
 	gtk_box_pack_start((GtkBox*)Box[0],RESET,FALSE,FALSE,0);
 	
 	gridLevel=gtk_grid_new();
