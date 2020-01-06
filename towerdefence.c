@@ -13,6 +13,8 @@ GtkWidget *UpgradeButton[7];
 GtkWidget *IleStar;
 GtkWidget *AchievementButton[7];
 GtkWidget *TabButton[N+2][N+2];//tylko raz init planszy i przyciskow, potem update
+GtkWidget *LevelInfo[3];//gold,life,round
+GtkWidget *NextRound;
 GtkWidget *plansza;//przy okazji zloto, zycie i goldMult//pamietaj o signal connect na zakup
 GtkWidget *TabImage[5];
 GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
@@ -20,7 +22,7 @@ GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 int unlocked[10];
 int upgrade[3];
 
-static void save(){
+static void save(){//cos nie dziala, psuje plik zapisu albo przy wczytaniu?
 	FILE *sv=fopen("TDsave.txt","w");
 	for(int i=0; i<10; i++)
 		fprintf(sv,"%d",unlocked[i]);
@@ -44,6 +46,7 @@ static void wq(){
 }
 
 struct tower{
+	int x,y;
 	int type;//w zaleznosci od tego upgrade, range, damage, ...
 	int range;
 	int *cover;
@@ -57,7 +60,6 @@ struct parametry{
 	bool isWall;
 	bool road;
 	bool land;
-	struct tower tow;
 };
 
 struct RoadNr{
@@ -71,6 +73,8 @@ struct level{
 	int Sx,Sy,Fx,Fy;
 	int ileEnemy;
 	int *enemyPattern;
+	int ileTower;
+	struct tower *tow;
 	struct RoadNr *ROAD;//dfs od S do F po R i kolejne pole to kolejny numer drogi
 	struct parametry tab[N+2][N+2];
 }poziomy[10];
@@ -93,7 +97,7 @@ static void deswin(){
 	gtk_widget_destroy(closewin);
 }
 
-static void clickZakup(int x, int y){
+static void clickZakup(int x, int y){//blokada na runde, kopia z pyt o res progress
 //	GtkWidget *okno=gtk_window_new();
 //	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER")i;
 //	Box[4]
@@ -114,20 +118,31 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 				x=i,y=j;
 				break;
 			}
-	if(poziomy[Q].tab[x][y].tow.type)
+	bool czy=false;
+	for(int i=0; i<poziomy[Q].ileTower; i++)
+		if(poziomy[Q].tow[i].x==x && poziomy[Q].tow[i].y==y)
+			czy=true;
+	
+	if(czy)
 		clickUpgrade(x,y);
 	else
 		clickZakup(x,y);
 	return;
+	//a potem nie update?
 }
 
 
 
-//int gold;
-//int life;
+int gold;
+int life;
 //int GoldMult;
+int roundnr;
 
-static void updatePlansza(){//zastapic label na image!
+static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
+	gtk_button_set_label((GtkButton*)LevelInfo[0],g_strdup_printf("GOLD: %d",gold));
+	gtk_button_set_label((GtkButton*)LevelInfo[1],g_strdup_printf("LIFE: %d",life));
+	gtk_button_set_label((GtkButton*)LevelInfo[2],g_strdup_printf("ROUND: %d/15",roundnr));
+
 	for(int i=0; i<N+2; i++)
 		for(int j=0; j<N+2; j++){
 			if(poziomy[Q].tab[i][j].isWall){
@@ -147,8 +162,17 @@ static void updatePlansza(){//zastapic label na image!
 }
 
 static void updateAchievement(){
-//AchievementButton
-
+//AchievementButton[7]
+	for(int i=0; i<5; i++)
+		if(unlocked[i*2] && unlocked[i*2+1] && unlocked[i*2]<7 && unlocked[i*2+1<7])
+			gtk_button_set_label((GtkButton*)AchievementButton[i],g_strdup_printf("STAGE %d FINISHED",i+1));
+	
+	bool ALLSTAR=true;
+	for(int i=0; i<10; i++)
+		if(unlocked[i]!=3)
+			ALLSTAR=false;
+	if(ALLSTAR)
+		gtk_button_set_label((GtkButton*)AchievementButton[5],"FULL GAME CLEAR");
 }
 
 static void updateUpgrade(){
@@ -208,7 +232,6 @@ static void respro(){
 static void DFS(int q, int x, int y){
 	int nr=1;
 	while(x!=poziomy[q].Fx || y!=poziomy[q].Fy){
-		//printf("x=%d,y=%d\n",x,y);
 		poziomy[q].tab[x][y].nr=nr;
 		poziomy[q].ROAD[nr-1].nr=nr;
 		poziomy[q].ROAD[nr-1].x=x;
@@ -224,7 +247,6 @@ static void DFS(int q, int x, int y){
 	poziomy[q].ROAD[nr-1].x=x;
 	poziomy[q].ROAD[nr-1].y=y;
 	nr++;
-	//realloc(poziomy[q].ROAD,nr*sizeof(struct RoadNr));//?
 }
 
 static void hideup(){
@@ -246,6 +268,7 @@ static void hidelev(){
 	gtk_container_remove(GTK_CONTAINER(TD),Box[3]);
 	gtk_container_add(GTK_CONTAINER(TD),Box[0]);
 	gtk_widget_show_all(Box[0]);
+	deswin();
 }//3->0
 
 static void showup(){
@@ -263,18 +286,60 @@ static void showach(){
 }//0->2
 
 static void showlev(GtkWidget *button, gpointer user_date){
-	g_object_ref(Box[0]);
-	gtk_container_remove(GTK_CONTAINER(TD),Box[0]);
-	gtk_container_add(GTK_CONTAINER(TD),Box[3]);
 	for(int q=0; q<10; q++)
 		if(gtk_grid_get_child_at(GTK_GRID(gridLevel),q%5,q/5)==button)
 			if(unlocked[q]!=7){
+				g_object_ref(Box[0]);
+				gtk_container_remove(GTK_CONTAINER(TD),Box[0]);
+				gtk_container_add(GTK_CONTAINER(TD),Box[3]);
 				Q=q;
+				//printf("q=%d\n",q);
+				poziomy[q].ileTower=0;
+				poziomy[q].tow=(struct tower*)malloc(0);//?
 				updatePlansza();
+				roundnr=0;
+				life=15;
+				gold=100;//?
+				gtk_widget_show_all(Box[3]);
 				break;
 			}
-	gtk_widget_show_all(Box[3]);
 }//0->3
+
+static void ExLev(){
+	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(okno),"RESET PROGRESS");
+	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
+	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
+	closewin=okno;
+	g_signal_connect(G_OBJECT(okno),"destroy",deswin,NULL);
+
+	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
+	gtk_container_add(GTK_CONTAINER(okno),boxo);
+
+	GtkWidget *grido=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_row_homogeneous(GTK_GRID(grido), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_column_homogeneous(GTK_GRID(grido), TRUE);
+
+	gtk_box_pack_start((GtkBox*)boxo,grido,TRUE,FALSE,0);
+
+	GtkWidget *opis=gtk_button_new_with_label("ARE YOU SURE YOU WANT TO EXIT?");
+	gtk_grid_attach(GTK_GRID(grido),opis,0,0,3,1);
+	GtkWidget *yes=gtk_button_new_with_label("YES");
+	g_signal_connect(G_OBJECT(yes),"clicked",hidelev,NULL);
+	gtk_grid_attach(GTK_GRID(grido),yes,0,1,1,1);
+	GtkWidget *no=gtk_button_new_with_label("NO");
+	g_signal_connect(G_OBJECT(no),"clicked",deswin,NULL);
+	gtk_grid_attach(GTK_GRID(grido),no,2,1,1,1);
+
+	gtk_widget_show_all(okno);
+}
+
+static void ROUND(){
+
+//updatePlansza();
+}
 
 static void init(){
 	FILE *level=fopen("level","r");
@@ -306,10 +371,11 @@ static void init(){
 
 		poziomy[q].ROAD=calloc(ileRoad*sizeof(struct RoadNr),1);
 		fscanf(level,"%d",&poziomy[q].ileEnemy);
-		poziomy[q].enemyPattern=malloc(poziomy[q].ileEnemy*sizeof(int));
+		poziomy[q].enemyPattern=(int*)malloc(poziomy[q].ileEnemy*sizeof(int));
 		for(int i=0; i<poziomy[q].ileEnemy; i++)
 			fscanf(level,"%d",&poziomy[q].enemyPattern[i]);
 		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
+		poziomy[q].tow=(struct tower*)malloc(0);//?
 	}
 	fclose(level);
 	
@@ -317,33 +383,61 @@ static void init(){
 	if(sv==NULL)
 		reset();
 	else{
-		for(int i=0; i<10; i++)
-			fscanf(sv,"%d",&unlocked[i]);
-		for(int i=0; i<3; i++)
-			fscanf(sv,"%d",&upgrade[i]);
-		fclose(sv);
+		char c;
+		for(int i=0; i<10; i++){
+			fscanf(sv,"%c",&c);
+			unlocked[i]=c-'0';
+		}
+		for(int i=0; i<3; i++){
+			fscanf(sv,"%c",&c);
+			upgrade[i]=c-'0';
+		}
 	}
+	fclose(sv);
 	
 	//graphic init
 
-	Box[0]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//world//do init X a jak odbl to nr i ile *
+	Box[0]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//world//do init X a jak odbl to nr lev i ile *
 	Box[1]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//upgrade
 	Box[2]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//achievement
 	Box[3]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//level
-	//Box[4]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//zakup wiez
 
 	//plansza init
+	
+	GtkWidget *exit=gtk_button_new_with_label("EXIT LEVEL");
+	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(ExLev),NULL);
+	gtk_box_pack_start((GtkBox*)Box[3],exit,TRUE,FALSE,0);
+
+	GtkWidget *levelinfo=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(levelinfo),5);
+	gtk_grid_set_row_homogeneous(GTK_GRID(levelinfo),TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(levelinfo),5);
+	gtk_grid_set_column_homogeneous(GTK_GRID(levelinfo),TRUE);
+	gtk_box_pack_start((GtkBox*)Box[3],levelinfo,TRUE,FALSE,0);
+
+	for(int i=0; i<3; i++){
+		LevelInfo[i]=gtk_button_new();
+		gtk_grid_attach(GTK_GRID(levelinfo),LevelInfo[i],0,i,1,1);
+	}
+
+	NextRound=gtk_button_new_with_label("NEXT ROUND");
+	g_signal_connect(G_OBJECT(NextRound),"clicked",G_CALLBACK(ROUND),NULL);
+	gtk_box_pack_start((GtkBox*)Box[3],NextRound,TRUE,FALSE,0);
+
 	plansza=gtk_grid_new();
 	gtk_grid_set_row_spacing(GTK_GRID(plansza),0);
 	gtk_grid_set_row_homogeneous(GTK_GRID(plansza),TRUE);
 	gtk_grid_set_column_spacing(GTK_GRID(plansza),0);
 	gtk_grid_set_column_homogeneous(GTK_GRID(plansza),TRUE);
-	
+
+	gtk_box_pack_start((GtkBox*)Box[3],plansza,TRUE,FALSE,0);
+
 	for(int i=0; i<N+2; i++)
 		for(int j=0; j<N+2; j++){
 			TabButton[i][j]=gtk_button_new();
 			gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
 		}
+
 	//world init
 	GtkWidget *RESET=gtk_button_new_with_label("RESET\nPROGRESS");
 	g_signal_connect(G_OBJECT(RESET),"clicked",G_CALLBACK(respro),NULL);
