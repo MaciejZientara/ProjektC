@@ -22,7 +22,7 @@ GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 int unlocked[10];
 int upgrade[3];
 
-static void save(){//cos nie dziala, psuje plik zapisu albo przy wczytaniu?
+static void save(){
 	FILE *sv=fopen("TDsave.txt","w");
 	for(int i=0; i<10; i++)
 		fprintf(sv,"%d",unlocked[i]);
@@ -184,6 +184,8 @@ static void updateWorld(){
 	for(int q=0; q<10; q++)
 		if(unlocked[q]!=7)
 			gtk_button_set_label((GtkButton*)LevelButton[q],g_strdup_printf("%d.%d",q,unlocked[q]));
+		else
+			gtk_button_set_label((GtkButton*)LevelButton[q],g_strdup_printf("%d.X",q));	
 }
 
 static void update(){
@@ -514,7 +516,7 @@ static GtkWidget* gra(){
 
 	init();
 
-	//update();		//???
+	update();		//???
 
 	//oddzielny box na zapisy szerokosc 5/1 i reset szerokosc 1/1(pytanie czy pewny), 
 	//odzielny box na achivement
