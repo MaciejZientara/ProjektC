@@ -6,7 +6,7 @@ GtkWidget *Main;
 
 struct pairGS{
 	GtkWidget *G;
-	char S[15];
+	char S[20];
 }*P;
 
 void TowDef();
