@@ -57,7 +57,8 @@ struct tower{
 	int type;//w zaleznosci od tego upgrade, range, damage, ...
 	int *cover;
 	int level;
-	bool mode;//0-first,1-last
+	int mode;//0-first,1-last,2-strong
+	struct tower *next;
 };
 
 struct parametry{
@@ -71,14 +72,13 @@ struct RoadNr{
 	int nr;
 	int x;
 	int y;
-	int enemy;
+	int enemy;//life
 };
 
 struct level{
 	int Sx,Sy,Fx,Fy;
-	int ileEnemy;
-	int *enemyPattern;
-	int ileTower;
+	int ileEnemy;//czy nie zrobic globalny dla wszystkich poziomow?
+	int *enemyPattern;//
 	struct tower *tow;
 	struct RoadNr *ROAD;//dfs od S do F po R i kolejne pole to kolejny numer drogi
 	struct parametry tab[N+2][N+2];
@@ -89,147 +89,6 @@ int Q,X,Y;
 GtkWidget *closewin;
 static void deswin(){
 	gtk_widget_destroy(closewin);
-}
-
-static void balista(){
-	if(gold<100){
-		//za malo kasy
-		return;
-	}
-	gold-=100;
-	int n=++poziomy[Q].ileTower;
-	poziomy[Q].tow=(struct tower*)realloc(poziomy[Q].tow,n*sizeof(struct tower));
-
-	poziomy[Q].tow[n-1].x=X;
-	poziomy[Q].tow[n-1].y=Y;
-	poziomy[Q].tow[n-1].type=1;
-	poziomy[Q].tow[n-1].mode=0;
-	poziomy[Q].tow[n-1].level=1;
-
-	//wylicz cover
-	int ran=2;
-	int RoadRange=0;
-	for(int i=0; i<1+2*ran; i++)
-		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
-				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
-					RoadRange++;
-	
-	poziomy[Q].tow[n-1].cover=(int*)malloc(sizeof(int)*RoadRange);
-	
-	int poz=0;
-	for(int i=0; i<1+2*ran; i++)
-		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
-				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
-					poziomy[Q].tow[n-1].cover[poz++]=poziomy[Q].tab[i][j].nr;
-
-	for(int i=0; i<RoadRange; i++){
-		int mini=666,poz=0;
-		for(int j=i; j<RoadRange; j++)
-			if(poziomy[Q].tow[n-1].cover[j]<mini){
-				mini=poziomy[Q].tow[n-1].cover[j];
-				poz=j;
-			}
-		int tmp=poziomy[Q].tow[n-1].cover[0];
-		poziomy[Q].tow[n-1].cover[0]=poziomy[Q].tow[n-1].cover[poz];
-		poziomy[Q].tow[n-1].cover[poz]=tmp;
-	}
-
-	deswin();
-}
-//3 wieza-wulkan rand attack pattern na calym cover
-static void catapult(){
-	if(gold<200){
-		//za malo kasy
-		return;
-	}
-	gold-=200;
-	int n=++poziomy[Q].ileTower;
-	poziomy[Q].tow=(struct tower*)realloc(poziomy[Q].tow,n*sizeof(struct tower));
-
-	poziomy[Q].tow[n-1].x=X;
-	poziomy[Q].tow[n-1].y=Y;
-	poziomy[Q].tow[n-1].type=2;
-	poziomy[Q].tow[n-1].mode=0;
-	poziomy[Q].tow[n-1].level=1;
-
-	//wylicz cover
-	int ran=1;
-	int RoadRange=0;
-	for(int i=0; i<1+2*ran; i++)
-		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
-				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
-					RoadRange++;
-	
-	poziomy[Q].tow[n-1].cover=(int*)malloc(sizeof(int)*RoadRange);
-	
-	int poz=0;
-	for(int i=0; i<1+2*ran; i++)
-		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
-				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
-					poziomy[Q].tow[n-1].cover[poz++]=poziomy[Q].tab[i][j].nr;
-
-	for(int i=0; i<RoadRange; i++){
-		int mini=666,poz=0;
-		for(int j=i; j<RoadRange; j++)
-			if(poziomy[Q].tow[n-1].cover[j]<mini){
-				mini=poziomy[Q].tow[n-1].cover[j];
-				poz=j;
-			}
-		int tmp=poziomy[Q].tow[n-1].cover[0];
-		poziomy[Q].tow[n-1].cover[0]=poziomy[Q].tow[n-1].cover[poz];
-		poziomy[Q].tow[n-1].cover[poz]=tmp;
-	}
-
-	deswin();
-}
-
-static void clickZakup(){
-	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER");
-	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
-	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
-	closewin=okno;
-	g_signal_connect(G_OBJECT(okno),"destroy",deswin,NULL);
-
-	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
-	gtk_container_add(GTK_CONTAINER(okno),boxo);
-
-	GtkWidget *grido=gtk_grid_new();
-	gtk_grid_set_row_spacing(GTK_GRID(grido), 5);
-	gtk_grid_set_row_homogeneous(GTK_GRID(grido), TRUE);
-	gtk_grid_set_column_spacing(GTK_GRID(grido), 5);
-	gtk_grid_set_column_homogeneous(GTK_GRID(grido), TRUE);
-
-	gtk_box_pack_start((GtkBox*)boxo,grido,TRUE,FALSE,0);
-
-	GtkWidget *opis=gtk_button_new_with_label("WHICH TOWER WOULD YOU LIKE?");
-	gtk_grid_attach(GTK_GRID(grido),opis,0,0,3,1);
-	GtkWidget *t1=gtk_button_new_with_label("BALISTA\n100 GOLD");
-	g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t1,0,1,1,1);
-	GtkWidget *t2=gtk_button_new_with_label("CATAPULT\n200 GOLD");
-	g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t2,2,1,1,1);
-	GtkWidget *exit=gtk_button_new_with_label("CANCEL");
-	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(deswin),NULL);
-	gtk_grid_attach(GTK_GRID(grido),exit,1,2,1,1);
-
-
-	gtk_widget_show_all(okno);
-//	GtkWidget *okno=gtk_window_new();
-//	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER")i;
-//	Box[4]
-
-
-}
-
-static void clickUpgrade(){
-
-
 }
 
 
@@ -249,10 +108,17 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 			}
 			if(poziomy[Q].tab[i][j].land){
 				gtk_button_set_label((GtkButton*)TabButton[i][j],"L");
-				//gtk_button_set_image((GtkButton*)TabButton[i][j],TabImage[0]);
+				//gtk_button_set_image((GtkButton*)TabButton[i][j],(GtkWidget*)TabImage[0]);
 				continue;
 			}
 		}
+
+
+	struct tower *t=poziomy[Q].tow;
+	while(t!=NULL){
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("T%d",t->level));
+		t=t->next;
+	}
 
 	//odzielnie tower i enemy
 }
@@ -273,7 +139,7 @@ static void updateAchievement(){
 
 static void updateUpgrade(){
 //UpgradeButton
-
+//IleStar
 }
 
 static void updateWorld(){
@@ -290,6 +156,141 @@ static void update(){
 	updateWorld();
 }
 
+static void setTower(int typ){
+	int koszt,ran;
+	if(typ==1){
+		koszt=100;
+		ran=2;
+	}
+	if(typ==2){
+		koszt=200;
+		ran=1;
+	}
+
+	if(gold<koszt){//mnoznik na koszt!
+		dialog();
+		return;
+	}
+	gold-=koszt;
+
+	struct tower *tmp=(struct tower*)malloc(sizeof(struct tower));
+	tmp->next=poziomy[Q].tow;
+	poziomy[Q].tow=tmp;
+
+	poziomy[Q].tow->x=X;
+	poziomy[Q].tow->y=Y;
+	poziomy[Q].tow->type=typ;
+	poziomy[Q].tow->mode=0;
+	poziomy[Q].tow->level=1;
+
+	//wylicz cover
+	int RoadRange=0;
+	for(int i=0; i<1+2*ran; i++)
+		for(int j=0; j<1+2*ran; j++)
+			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
+				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
+					RoadRange++;
+	
+	poziomy[Q].tow->cover=(int*)malloc(sizeof(int)*RoadRange);
+	
+	int poz=0;
+	for(int i=0; i<1+2*ran; i++)
+		for(int j=0; j<1+2*ran; j++)
+			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
+				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
+					poziomy[Q].tow->cover[poz++]=poziomy[Q].tab[i][j].nr;
+
+	for(int i=0; i<RoadRange; i++){
+		int mini=666,poz=0;
+		for(int j=i; j<RoadRange; j++)
+			if(poziomy[Q].tow->cover[j]<mini){
+				mini=poziomy[Q].tow->cover[j];
+				poz=j;
+			}
+		int tmp=poziomy[Q].tow->cover[0];
+		poziomy[Q].tow->cover[0]=poziomy[Q].tow->cover[poz];
+		poziomy[Q].tow->cover[poz]=tmp;
+	}
+
+	deswin();
+	updatePlansza();
+}
+
+static void balista(){
+	setTower(1);
+}
+
+static void catapult(){
+	setTower(2);
+}
+
+
+
+static void clickZakup(){
+	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER");
+	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
+	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
+	closewin=okno;
+	g_signal_connect(G_OBJECT(okno),"destroy",deswin,NULL);
+
+	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
+	gtk_container_add(GTK_CONTAINER(okno),boxo);
+
+	GtkWidget *grido=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_row_homogeneous(GTK_GRID(grido), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_column_homogeneous(GTK_GRID(grido), TRUE);
+
+	gtk_box_pack_start((GtkBox*)boxo,grido,TRUE,FALSE,0);
+
+	free(P);
+	P=calloc(sizeof(struct pairGS),1);
+	P->G=okno;
+	strcpy(P->S,g_strdup_printf("NOT ENOUGH GOLD!"));
+
+	GtkWidget *opis=gtk_button_new_with_label("WHICH TOWER WOULD YOU LIKE?");
+	gtk_grid_attach(GTK_GRID(grido),opis,0,0,3,1);
+	
+	GtkWidget *t1=gtk_button_new_with_label("BALISTA\n100 GOLD");
+	g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t1,0,1,1,1);
+	GtkWidget *t2=gtk_button_new_with_label("CATAPULT\n200 GOLD");
+	g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t2,2,1,1,1);
+	
+	GtkWidget *t3=gtk_button_new_with_label("TRAP BUILDER\n150 GOLD");//moze sobie darowac?
+	//g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t3,0,2,1,1);
+	GtkWidget *t4=gtk_button_new_with_label("SHY DRAGON\n250 GOLD");
+	//g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t4,2,2,1,1);
+	
+	GtkWidget *t5=gtk_button_new_with_label("VULCAN\n300 GOLD");
+	//g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t5,0,3,1,1);
+	GtkWidget *t6=gtk_button_new_with_label("DRUID\n400 GOLD");//ODZDZIELNIE OD RESZTY
+	//g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t6,2,3,1,1);
+	
+	GtkWidget *exit=gtk_button_new_with_label("CANCEL");
+	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(deswin),NULL);
+	gtk_grid_attach(GTK_GRID(grido),exit,1,4,1,1);
+
+//jak zrobic driuda, trap builder?
+
+	gtk_widget_show_all(okno);
+}
+
+static void clickUpgrade(){
+//level up, sell, attack mode change
+
+}
+
+
+
+
 
 static void czyTower(GtkWidget *button, gpointer user_date){	
 	int x,y;//blokada na runde
@@ -300,9 +301,12 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 				break;
 			}
 	bool czy=false;
-	for(int i=0; i<poziomy[Q].ileTower; i++)
-		if(poziomy[Q].tow[i].x==x && poziomy[Q].tow[i].y==y)
+	struct tower *t=poziomy[Q].tow;//wstaw ifa
+	while(t!=NULL){	
+		if(poziomy[Q].tow->x==x && poziomy[Q].tow->y==y)
 			czy=true;
+		t=t->next;
+	}
 	
 	X=x,Y=y;
 
@@ -310,7 +314,7 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 		clickUpgrade();
 	else
 		clickZakup();
-	updatePlansza();
+	//updatePlansza();
 }
 
 
@@ -371,6 +375,12 @@ static void DFS(int q, int x, int y){
 	nr++;
 }
 
+static void rectowfree(struct tower *x){
+	if(x->next!=NULL)
+		rectowfree(x->next);
+	free(x);
+}
+
 static void hideup(){
 	g_object_ref(Box[1]);
 	gtk_container_remove(GTK_CONTAINER(TD),Box[1]);
@@ -420,12 +430,11 @@ static void showlev(GtkWidget *button, gpointer user_date){
 					for(int j=0; j<N+2; j++)
 						if(poziomy[q].tab[i][j].land)
 							g_signal_connect(G_OBJECT(TabButton[i][j]),"clicked",G_CALLBACK(czyTower),NULL);
-
-				poziomy[q].ileTower=0;
-				poziomy[q].tow=(struct tower*)malloc(0);//?
+				if(poziomy[Q].tow!=NULL)
+					rectowfree(poziomy[Q].tow);
 				roundnr=0;
 				life=15;
-				gold=100;//?
+				gold=250;//?
 				updatePlansza();
 				gtk_widget_show_all(Box[3]);
 				break;
@@ -466,6 +475,13 @@ static void ExLev(){
 static void ROUND(){
 //enemy move, tower attack
 //updatePlansza();
+
+struct tower *t=poziomy[Q].tow;
+while(t!=NULL){
+//...
+t=t->next;
+}
+
 }
 
 static void init(){
@@ -502,7 +518,7 @@ static void init(){
 		for(int i=0; i<poziomy[q].ileEnemy; i++)
 			fscanf(level,"%d",&poziomy[q].enemyPattern[i]);
 		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
-		poziomy[q].tow=(struct tower*)malloc(0);//?
+		//poziomy[q].tow=(struct tower*)malloc(0);//?
 	}
 	fclose(level);
 	
@@ -524,7 +540,7 @@ static void init(){
 	
 	//graphic init
 
-	//gtk_image_set_from_file((GtkImage*)TabImage[0],"land.png");
+	TabImage[0]=gtk_image_new_from_file("land.png");//mniejsze obrazy i dokonczyc
 
 	//box init
 
@@ -645,12 +661,8 @@ static GtkWidget* gra(){
 
 	init();
 
-	update();		//???
-
-	//oddzielny box na zapisy szerokosc 5/1 i reset szerokosc 1/1(pytanie czy pewny), 
-	//odzielny box na achivement
-	//odzielny box na mapy
-	//odzielny window na budowe wiez
+	update();
+	
 	return TD;
 }
 
