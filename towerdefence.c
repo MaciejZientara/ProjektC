@@ -27,7 +27,7 @@ int gold;
 int life;
 //int GoldMult;
 int roundnr;
-
+//int costred;
 
 static void save(){
 	FILE *sv=fopen("TDsave.txt","w");
@@ -59,6 +59,7 @@ struct tower{
 	int level;
 	int mode;//0-first,1-last,2-strong
 	struct tower *next;
+//costred?,dmg,range,ile tur?
 };
 
 struct parametry{
@@ -80,7 +81,7 @@ struct level{
 	int ileEnemy;//czy nie zrobic globalny dla wszystkich poziomow?
 	int *enemyPattern;//
 	struct tower *tow;
-	struct RoadNr *ROAD;//dfs od S do F po R i kolejne pole to kolejny numer drogi
+	struct RoadNr *ROAD;
 	struct parametry tab[N+2][N+2];
 }poziomy[10];
 
@@ -107,7 +108,7 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 				continue;
 			}
 			if(poziomy[Q].tab[i][j].land){
-				gtk_button_set_label((GtkButton*)TabButton[i][j],"L");
+				gtk_button_set_label((GtkButton*)TabButton[i][j],".");
 				//gtk_button_set_image((GtkButton*)TabButton[i][j],(GtkWidget*)TabImage[0]);
 				continue;
 			}
@@ -115,7 +116,7 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 
 
 	struct tower *t=poziomy[Q].tow;
-	while(t!=NULL){
+	while(t!=NULL){//trzeba dokonczyc
 		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("T%d",t->level));
 		t=t->next;
 	}
@@ -123,8 +124,7 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 	//odzielnie tower i enemy
 }
 
-static void updateAchievement(){
-//AchievementButton[7]
+static void updateAchievement(){							//brak powrotu po respro
 	for(int i=0; i<5; i++)
 		if(unlocked[i*2] && unlocked[i*2+1] && unlocked[i*2]<7 && unlocked[i*2+1<7])
 			gtk_button_set_label((GtkButton*)AchievementButton[i],g_strdup_printf("STAGE %d FINISHED",i+1));
@@ -133,13 +133,17 @@ static void updateAchievement(){
 	for(int i=0; i<10; i++)
 		if(unlocked[i]!=3)
 			ALLSTAR=false;
-	if(ALLSTAR)
+	if(ALLSTAR)//dodaj endless level
 		gtk_button_set_label((GtkButton*)AchievementButton[5],"FULL GAME CLEAR");
 }
 
 static void updateUpgrade(){
 //UpgradeButton
-//IleStar
+	int ile=0;
+	for(int i=0; i<10; i++)
+		if(unlocked[i]<7)
+			ile+=unlocked[i];
+	gtk_button_set_label((GtkButton*)IleStar,g_strdup_printf("%d/30",ile));
 }
 
 static void updateWorld(){
@@ -164,6 +168,14 @@ static void setTower(int typ){
 	}
 	if(typ==2){
 		koszt=200;
+		ran=1;
+	}
+	if(typ==3){
+		koszt=250;
+		ran=1;
+	}
+	if(typ==4){
+		koszt=300;
 		ran=1;
 	}
 
@@ -224,7 +236,17 @@ static void catapult(){
 	setTower(2);
 }
 
+static void shydragon(){
+	setTower(3);
+}
 
+static void vulcan(){
+	setTower(4);
+}
+
+static void druid(){
+//...
+}
 
 static void clickZakup(){
 	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -232,7 +254,7 @@ static void clickZakup(){
 	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
 	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
 	closewin=okno;
-	g_signal_connect(G_OBJECT(okno),"destroy",deswin,NULL);
+	g_signal_connect(G_OBJECT(okno),"destroy",G_CALLBACK(deswin),NULL);
 
 	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
 	gtk_container_add(GTK_CONTAINER(okno),boxo);
@@ -251,32 +273,32 @@ static void clickZakup(){
 	strcpy(P->S,g_strdup_printf("NOT ENOUGH GOLD!"));
 
 	GtkWidget *opis=gtk_button_new_with_label("WHICH TOWER WOULD YOU LIKE?");
-	gtk_grid_attach(GTK_GRID(grido),opis,0,0,3,1);
+	gtk_grid_attach(GTK_GRID(grido),opis,1,0,1,1);
 	
 	GtkWidget *t1=gtk_button_new_with_label("BALISTA\n100 GOLD");
 	g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t1,0,1,1,1);
+	gtk_grid_attach(GTK_GRID(grido),t1,1,1,1,1);
 	GtkWidget *t2=gtk_button_new_with_label("CATAPULT\n200 GOLD");
 	g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t2,2,1,1,1);
+	gtk_grid_attach(GTK_GRID(grido),t2,1,2,1,1);
 	
-	GtkWidget *t3=gtk_button_new_with_label("TRAP BUILDER\n150 GOLD");//moze sobie darowac?
+	//GtkWidget *t3=gtk_button_new_with_label("TRAP BUILDER\n150 GOLD");//moze sobie darowac?
 	//g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t3,0,2,1,1);
+	//gtk_grid_attach(GTK_GRID(grido),t3,0,2,1,1);
 	GtkWidget *t4=gtk_button_new_with_label("SHY DRAGON\n250 GOLD");
-	//g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t4,2,2,1,1);
+	g_signal_connect(G_OBJECT(t4),"clicked",shydragon,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t4,1,3,1,1);
 	
 	GtkWidget *t5=gtk_button_new_with_label("VULCAN\n300 GOLD");
-	//g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t5,0,3,1,1);
-	GtkWidget *t6=gtk_button_new_with_label("DRUID\n400 GOLD");//ODZDZIELNIE OD RESZTY
-	//g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
-	gtk_grid_attach(GTK_GRID(grido),t6,2,3,1,1);
+	g_signal_connect(G_OBJECT(t5),"clicked",vulcan,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t5,1,4,1,1);
+	GtkWidget *t6=gtk_button_new_with_label("DRUID\n400 GOLD");
+	g_signal_connect(G_OBJECT(t6),"clicked",druid,NULL);
+	gtk_grid_attach(GTK_GRID(grido),t6,1,5,1,1);
 	
 	GtkWidget *exit=gtk_button_new_with_label("CANCEL");
 	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(deswin),NULL);
-	gtk_grid_attach(GTK_GRID(grido),exit,1,4,1,1);
+	gtk_grid_attach(GTK_GRID(grido),exit,1,6,1,1);
 
 //jak zrobic driuda, trap builder?
 
@@ -285,14 +307,12 @@ static void clickZakup(){
 
 static void clickUpgrade(){
 //level up, sell, attack mode change
-
+//sell - usuniecie z tow z przepieciem ptr, dla druida usuniecie efektow z wiez
+//lev up - init tow z innymi parametrami
+//mode change :)
 }
 
-
-
-
-
-static void czyTower(GtkWidget *button, gpointer user_date){	
+static void czyTower(GtkWidget *button, gpointer user_date){
 	int x,y;//blokada na runde
 	for(int i=0; i<N+2; i++)
 		for(int j=0; j<N+2; j++)
@@ -300,6 +320,8 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 				x=i,y=j;
 				break;
 			}
+	if(!poziomy[Q].tab[x][y].land)
+		return;
 	bool czy=false;
 	struct tower *t=poziomy[Q].tow;//wstaw ifa
 	while(t!=NULL){	
@@ -314,7 +336,6 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 		clickUpgrade();
 	else
 		clickZakup();
-	//updatePlansza();
 }
 
 
@@ -426,12 +447,10 @@ static void showlev(GtkWidget *button, gpointer user_date){
 				gtk_container_add(GTK_CONTAINER(TD),Box[3]);
 				Q=q;
 
-				for(int i=0; i<N+2; i++)
-					for(int j=0; j<N+2; j++)
-						if(poziomy[q].tab[i][j].land)
-							g_signal_connect(G_OBJECT(TabButton[i][j]),"clicked",G_CALLBACK(czyTower),NULL);
 				if(poziomy[Q].tow!=NULL)
 					rectowfree(poziomy[Q].tow);
+				poziomy[q].tow=NULL;
+				
 				roundnr=0;
 				life=15;
 				gold=250;//?
@@ -472,22 +491,59 @@ static void ExLev(){
 	gtk_widget_show_all(okno);
 }
 
-static void ROUND(){
-//enemy move, tower attack
-//updatePlansza();
-
-struct tower *t=poziomy[Q].tow;
-while(t!=NULL){
-//...
-t=t->next;
+static void fail(){
+	free(P);
+	P=calloc(sizeof(struct pairGS),1);
+	P->G=TD;
+	strcpy(P->S,"YOUR DEFENCE LOST!");
+	dialog();
+	hidelev();
 }
 
+static void win(){
+	unlocked[Q]=(life-1)/3+1;
+	//save();
+	hidelev();
+	update();
+}
+
+static void ROUND(){
+//tower attack
+	
+	while(false){//po pattern enemy, if -1 roundnr++
+		if(life==0)
+			fail();
+		int ileR=sizeof(poziomy[Q].ROAD)/sizeof(struct RoadNr);
+		
+		life-=poziomy[Q].ROAD[ileR-1].enemy;
+		
+		for(int i=ileR-1; i>0; i--){
+			poziomy[Q].ROAD[i].enemy=poziomy[Q].ROAD[i-1].enemy;
+		}
+		poziomy[Q].ROAD[0].enemy=1;//zastapic na pattern
+		
+		struct tower *t=poziomy[Q].tow;
+		while(t!=NULL){
+			//...
+			//podzial na wieze, ile razy atakuje(druid), attack mode
+			t=t->next;
+		}
+		updatePlansza();
+		//potrzebne przerwy miedzy kolejnymi czynnosciami w wyswietlaniu
+	}
+	if(roundnr=16)//?
+		win();
 }
 
 static void init(){
 	FILE *level=fopen("level","r");
-	for(int q=0;q<1;q++){								//q<1->10!!!
+	for(int q=0;q<10;q++){
 		int ileRoad=0;
+		char tmp;
+		fscanf(level,"%c",&tmp);
+		if(tmp=='\n')
+			fscanf(level,"%c",&tmp);
+		
 		for(int i=0; i<N+2; i++)
 			for(int j=0; j<N+2; j++){
 				char c;
@@ -511,15 +567,19 @@ static void init(){
 					}
 				}
 			}
-
+		
 		poziomy[q].ROAD=calloc(ileRoad*sizeof(struct RoadNr),1);
+		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
+		poziomy[q].tow=NULL;
+	}
+	/*
 		fscanf(level,"%d",&poziomy[q].ileEnemy);
 		poziomy[q].enemyPattern=(int*)malloc(poziomy[q].ileEnemy*sizeof(int));
-		for(int i=0; i<poziomy[q].ileEnemy; i++)
+		for(int i=0; i<poziomy[q].ileEnemy; i++)//brak pattern w lev
 			fscanf(level,"%d",&poziomy[q].enemyPattern[i]);
-		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
+		
 		//poziomy[q].tow=(struct tower*)malloc(0);//?
-	}
+	*/
 	fclose(level);
 	
 	FILE *sv=fopen("TDsave.txt","r");
@@ -544,7 +604,7 @@ static void init(){
 
 	//box init
 
-	Box[0]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//world//do init X a jak odbl to nr lev i ile *
+	Box[0]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//world
 	Box[1]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//upgrade
 	Box[2]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//achievement
 	Box[3]=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);//level
@@ -583,6 +643,7 @@ static void init(){
 		for(int j=0; j<N+2; j++){
 			TabButton[i][j]=gtk_button_new();
 			gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
+			g_signal_connect(G_OBJECT(TabButton[i][j]),"clicked",G_CALLBACK(czyTower),NULL);
 		}
 
 	//world init
@@ -673,30 +734,15 @@ void TowDef(){//main function
 	return;
 /*
 	ile przeciwnikow na runde, losowanie
-	moze daj n do rand i tworzyc po jednej turze i testowac
+	tworzyc po jednej turze i testowac
 	
-	box na wybor zapisu 3 tak jak ile graczy
-	reset zapisu
-	wszytsko w odzielnych plikach
-	wszystkie poziomy w jednym pliku, jeden po drugim
-	achivementy, upgrade i postep w pliku zapisu	
+	upgrade koszt za 1,2,3; goldmult 1,2,3; damage wiez 6,1
 
-	upgrade koszt za 1,2,3; goldmult 1,2,3; damage wiez 6,12
-
-	wieze poj range=2+level, damage=2*level+upgradeDamage
-	wieze mass range=level, damage=level+ugradeDamage
-	cost=X*upgradeCost
-
-runds:
-kazdy poziom to ilosc zycia balonow
-po 15 tur, 1. to 5 pojedyn, kazda kolejna to kolejne 5
-dla 1-5 pojedyncze balony, dla 6-10 podwojne, dla 11-15 potrojne
-
-int rx,ry;
-gtk_window_get_default_size(TD,rx,ry);
-gtk_resize(TD,rx,ry);
+	int rx,ry;
+	gtk_window_get_default_size(TD,rx,ry);
+	gtk_resize(TD,rx,ry);
 
 
-LFZ-popsicle (NCS)
+	LFZ-popsicle (NCS)
 */
 }
