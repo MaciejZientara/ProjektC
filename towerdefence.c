@@ -22,6 +22,9 @@ GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 int unlocked[10];
 int upgrade[3];
 
+//int ileEnemy;//czy nie zrobic globalny dla wszystkich poziomow?
+int *enemyPattern;//jak wczytac/zaladowac?
+//czy dodac typy enemy (regen,...)
 
 int gold;
 int life;
@@ -78,8 +81,6 @@ struct RoadNr{
 
 struct level{
 	int Sx,Sy,Fx,Fy;
-	int ileEnemy;//czy nie zrobic globalny dla wszystkich poziomow?
-	int *enemyPattern;//
 	struct tower *tow;
 	struct RoadNr *ROAD;
 	struct parametry tab[N+2][N+2];
@@ -572,16 +573,24 @@ static void init(){
 		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
 		poziomy[q].tow=NULL;
 	}
-	/*
-		fscanf(level,"%d",&poziomy[q].ileEnemy);
-		poziomy[q].enemyPattern=(int*)malloc(poziomy[q].ileEnemy*sizeof(int));
-		for(int i=0; i<poziomy[q].ileEnemy; i++)//brak pattern w lev
-			fscanf(level,"%d",&poziomy[q].enemyPattern[i]);
-		
-		//poziomy[q].tow=(struct tower*)malloc(0);//?
-	*/
 	fclose(level);
-	
+
+	FILE *en=fopen("Enemy.txt","r");
+	int tmp,j=0;
+	while(!feof(en)){
+		fscanf(en,"%d",&tmp);
+		j++;
+	}
+	enemyPattern=(int*)calloc(sizeof(int)*j,1);
+	fclose(en);
+	en=fopen("Enemy.txt","r");
+	j=0;
+	while(!feof(en)){
+		fscanf(en,"%d",&tmp);
+		enemyPattern[j++]=tmp;
+	}
+	fclose(en);
+
 	FILE *sv=fopen("TDsave.txt","r");
 	if(sv==NULL)
 		reset();
