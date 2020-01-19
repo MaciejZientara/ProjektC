@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <gtk/gtk.h>
 #include "linker.h"
+#include <gdk/gdkwayland.h>
 
 #define N 20
 
@@ -19,11 +20,14 @@ GtkWidget *plansza;//przy okazji zloto, zycie i goldMult//pamietaj o signal conn
 GtkWidget *TabImage[12];
 GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 
+GdkFrameClock *CLife;
+//GdkFrameClock *CTabButton[N+2][N+2];
+
 int unlocked[10];
 int upgrade[3];
 
-//int ileEnemy;//czy nie zrobic globalny dla wszystkich poziomow?
-int *enemyPattern;//jak wczytac/zaladowac?
+int ileEnemy;
+int *enemyPattern;
 //czy dodac typy enemy (regen,...)
 
 int gold;
@@ -82,6 +86,7 @@ struct RoadNr{
 struct level{
 	int Sx,Sy,Fx,Fy;
 	struct tower *tow;
+	int ileR;
 	struct RoadNr *ROAD;
 	struct parametry tab[N+2][N+2];
 }poziomy[10];
@@ -98,14 +103,24 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 	gtk_button_set_label((GtkButton*)LevelInfo[0],g_strdup_printf("GOLD: %d",gold));
 	gtk_button_set_label((GtkButton*)LevelInfo[1],g_strdup_printf("LIFE: %d",life));
 	gtk_button_set_label((GtkButton*)LevelInfo[2],g_strdup_printf("ROUND: %d/15",roundnr));
-
+	
+	//plansza
 	for(int i=0; i<N+2; i++)
 		for(int j=0; j<N+2; j++){
 			if(poziomy[Q].tab[i][j].isWall){
 				continue;
 			}
+			//gtk_widget_queue_draw(TabButton[i][j]);//?
 			if(poziomy[Q].tab[i][j].road){
-				gtk_button_set_label((GtkButton*)TabButton[i][j],"R");
+				int life=poziomy[Q].ROAD[poziomy[Q].tab[i][j].nr-1].enemy;
+
+				if(life==0)
+					gtk_button_set_label((GtkButton*)TabButton[i][j],"R");
+				else{
+					//printf("%d\n",life);
+					gtk_button_set_label((GtkButton*)TabButton[i][j],g_strdup_printf("%d",life));	
+					//gtk_button_set_label((GtkButton*)TabButton[i][j],"r");
+				}
 				continue;
 			}
 			if(poziomy[Q].tab[i][j].land){
@@ -114,21 +129,33 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 				continue;
 			}
 		}
+/*	//enemy
+	int i=0;
+	while(poziomy[Q].ROAD[i].x!=poziomy[Q].Fx || poziomy[Q].ROAD[i].y!=poziomy[Q].Fy){
+		if(poziomy[Q].ROAD[i].enemy){
+			gtk_button_set_label((GtkButton*)TabButton[poziomy[Q].ROAD[i].x][poziomy[Q].ROAD[i].y],g_strdup_printf("%d",poziomy[Q].ROAD[i].enemy));
+		}//czeka do konca petli i dopiero pokazuje calosc + nie robi ostatniego F
+		i++;
+	}
+			gtk_button_set_label((GtkButton*)TabButton[poziomy[Q].ROAD[i].x][poziomy[Q].ROAD[i].y],g_strdup_printf("%d",poziomy[Q].ROAD[i].enemy));
+*/
 
+//czytac o gtk_widget_get_frame_clock() i gtk_widget_queue_draw()!!!!!!
 
+	//tower
 	struct tower *t=poziomy[Q].tow;
-	while(t!=NULL){//trzeba dokonczyc
+	while(t!=NULL){//trzeba dokonczyc tower
 		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("T%d",t->level));
 		t=t->next;
 	}
-
-	//odzielnie tower i enemy
 }
 
-static void updateAchievement(){							//brak powrotu po respro
+static void updateAchievement(){
 	for(int i=0; i<5; i++)
 		if(unlocked[i*2] && unlocked[i*2+1] && unlocked[i*2]<7 && unlocked[i*2+1<7])
 			gtk_button_set_label((GtkButton*)AchievementButton[i],g_strdup_printf("STAGE %d FINISHED",i+1));
+		else
+			gtk_button_set_label((GtkButton*)AchievementButton[i],"X");
 	
 	bool ALLSTAR=true;
 	for(int i=0; i<10; i++)
@@ -136,10 +163,15 @@ static void updateAchievement(){							//brak powrotu po respro
 			ALLSTAR=false;
 	if(ALLSTAR)//dodaj endless level
 		gtk_button_set_label((GtkButton*)AchievementButton[5],"FULL GAME CLEAR");
+	else
+		gtk_button_set_label((GtkButton*)AchievementButton[5],"X");
+		
 }
 
 static void updateUpgrade(){
 //UpgradeButton
+//GoldMult
+//costred
 	int ile=0;
 	for(int i=0; i<10; i++)
 		if(unlocked[i]<7)
@@ -313,6 +345,7 @@ static void clickUpgrade(){
 //mode change :)
 }
 
+//bool trwarunda ?
 static void czyTower(GtkWidget *button, gpointer user_date){
 	int x,y;//blokada na runde
 	for(int i=0; i<N+2; i++)
@@ -458,7 +491,8 @@ static void showlev(GtkWidget *button, gpointer user_date){
 				updatePlansza();
 				gtk_widget_show_all(Box[3]);
 				break;
-			}
+			}	
+	CLife=gtk_widget_get_frame_clock(LevelInfo[1]);
 }//0->3
 
 static void ExLev(){
@@ -495,10 +529,10 @@ static void ExLev(){
 static void fail(){
 	free(P);
 	P=calloc(sizeof(struct pairGS),1);
-	P->G=TD;
+	P->G=TD;//to jednak nie widget???
 	strcpy(P->S,"YOUR DEFENCE LOST!");
-	dialog();
 	hidelev();
+	dialog();
 }
 
 static void win(){
@@ -508,31 +542,72 @@ static void win(){
 	update();
 }
 
-static void ROUND(){
+
+int iteri;
+bool new=false;
+static bool runda(){
 //tower attack
-	
-	while(false){//po pattern enemy, if -1 roundnr++
+	int ileR=poziomy[Q].ileR;
+	//while(i<ileEnemy){
+		if(!new){
+			if(enemyPattern[iteri]==-1){
+				roundnr++;
+				new=true;
+			}
+		}
+		else{
+			bool czy=false;
+			for(int f=0; f<ileR; f++)
+				if(poziomy[Q].ROAD[f].enemy){
+//czy dalej? //ruch i life dziala, blad w liczeniu rund i wyswietlaniu ruchu
+					czy=true;
+					break;
+				}
+			if(!czy)
+				return false;
+		}
 		if(life==0)
 			fail();
-		int ileR=sizeof(poziomy[Q].ROAD)/sizeof(struct RoadNr);
 		
 		life-=poziomy[Q].ROAD[ileR-1].enemy;
 		
-		for(int i=ileR-1; i>0; i--){
-			poziomy[Q].ROAD[i].enemy=poziomy[Q].ROAD[i-1].enemy;
+		for(int j=ileR-1; j>0; j--){
+			poziomy[Q].ROAD[j].enemy=poziomy[Q].ROAD[j-1].enemy;
 		}
-		poziomy[Q].ROAD[0].enemy=1;//zastapic na pattern
-		
+		if(new){
+			poziomy[Q].ROAD[0].enemy=0;
+		}
+		else{
+			poziomy[Q].ROAD[0].enemy=enemyPattern[iteri++];
+		}
+
 		struct tower *t=poziomy[Q].tow;
 		while(t!=NULL){
+			//przy ataku life=max(life-attack,0)
 			//...
 			//podzial na wieze, ile razy atakuje(druid), attack mode
 			t=t->next;
 		}
+
 		updatePlansza();
-		//potrzebne przerwy miedzy kolejnymi czynnosciami w wyswietlaniu
+
+	//}
+	return true;
+}
+
+static void ROUND(){
+	int  i=0, roundcount=0;
+	while(roundcount<roundnr){
+		if(enemyPattern[i]==-1)
+			roundcount++;
+		i++;
 	}
-	if(roundnr=16)//?
+	iteri=i;
+	g_timeout_add(30,(GSourceFunc)runda,NULL);
+
+
+	gold+=100*(roundnr-1);//*goldmult;
+	if(roundnr==15)
 		win();
 }
 
@@ -568,7 +643,7 @@ static void init(){
 					}
 				}
 			}
-		
+		poziomy[q].ileR=ileRoad;
 		poziomy[q].ROAD=calloc(ileRoad*sizeof(struct RoadNr),1);
 		DFS(q,poziomy[q].Sx,poziomy[q].Sy);
 		poziomy[q].tow=NULL;
@@ -581,6 +656,7 @@ static void init(){
 		fscanf(en,"%d",&tmp);
 		j++;
 	}
+	ileEnemy=j;
 	enemyPattern=(int*)calloc(sizeof(int)*j,1);
 	fclose(en);
 	en=fopen("Enemy.txt","r");
@@ -654,6 +730,11 @@ static void init(){
 			gtk_grid_attach(GTK_GRID(plansza),TabButton[i][j],j,i,1,1);
 			g_signal_connect(G_OBJECT(TabButton[i][j]),"clicked",G_CALLBACK(czyTower),NULL);
 		}
+
+//tu nie dziala frame clock init
+
+
+
 
 	//world init
 	GtkWidget *RESET=gtk_button_new_with_label("RESET\nPROGRESS");
