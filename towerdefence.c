@@ -559,7 +559,6 @@ static bool runda(){
 			bool czy=false;
 			for(int f=0; f<ileR; f++)
 				if(poziomy[Q].ROAD[f].enemy){
-//czy dalej? //ruch i life dziala, blad w liczeniu rund i wyswietlaniu ruchu
 					czy=true;
 					break;
 				}
@@ -605,8 +604,9 @@ static void ROUND(){
 	iteri=i;
 	g_timeout_add(30,(GSourceFunc)runda,NULL);
 
-
+	new=false;
 	gold+=100*(roundnr-1);//*goldmult;
+	updatePlansza();
 	if(roundnr==15)
 		win();
 }
