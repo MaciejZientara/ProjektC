@@ -10,7 +10,7 @@
 GtkWidget *TD,*zakup;
 GtkWidget *gridLevel;
 GtkWidget *LevelButton[10];
-GtkWidget *UpgradeButton[7];
+GtkWidget *UpgradeButton[8];
 GtkWidget *IleStar;
 GtkWidget *AchievementButton[7];
 GtkWidget *TabButton[N+2][N+2];//tylko raz init planszy i przyciskow, potem update
@@ -183,49 +183,49 @@ static void updateUpgrade(){
 	int tmp1, tmp2, tmp3;
 
 	//upgrade koszt za 1,2,3; goldmult 1,2,3; damage wiez 6,12
-	if(upgarde[0]==0){
+	if(upgrade[0]==0){
 		GoldMult=1.0;
 		tmp1=1;
 	}
-	if(upgarde[0]==1){
+	if(upgrade[0]==1){
 		GoldMult=1.2;
 		tmp1=2;
 	}
-	if(upgarde[0]==2){
+	if(upgrade[0]==2){
 		GoldMult=1.5;
 		tmp1=3;
 	}
-	if(upgarde[0]==3){
+	if(upgrade[0]==3){
 		GoldMult=2.0;
 		tmp1=-1;
 	}
 
-	if(upgarde[1]==0){
+	if(upgrade[1]==0){
 		costred=1.0;
 		tmp2=1;
 	}
-	if(upgarde[1]==1){
+	if(upgrade[1]==1){
 		costred=0.9;
 		tmp2=2;
 	}
-	if(upgarde[1]==2){
+	if(upgrade[1]==2){
 		costred=0.8;
 		tmp2=3;
 	}
-	if(upgarde[1]==3){
+	if(upgrade[1]==3){
 		costred=0.5;
 		tmp2=-1;
 	}
 
-	if(upgarde[2]==0){
+	if(upgrade[2]==0){
 		addDamage=0;
 		tmp3=6;
 	}
-	if(upgarde[2]==1){
+	if(upgrade[2]==1){
 		addDamage=1;
 		tmp3=12;
 	}
-	if(upgarde[2]==2){
+	if(upgrade[2]==2){
 		addDamage=3;
 		tmp3=-1;
 	}
@@ -261,6 +261,42 @@ static void update(){
 	updateAchievement();
 	updateUpgrade();
 	updateWorld();
+}
+
+static void starup(GtkWidget *button, gpointer user_date){
+	int ile=0;
+	for(int i=0; i<10; i++)
+		if(unlocked[i]<7)
+			ile+=unlocked[i];
+	int wydane=0;
+
+	int starcost[3][4]={{1,2,3,0},{1,2,3,0},{6,12,0,0}};
+
+	for(int i=0; i<3; i++)
+		for(int j=0; j<upgrade[i]; j++)
+			wydane+=starcost[i][j];
+
+	for(int q=0; q<3; q++)
+		if(UpgradeButton[3+q]==button)
+			if(starcost[q][upgrade[q]]){
+				if(ile-wydane-starcost[q][upgrade[q]+1]>=0){
+					upgrade[q]++;
+					update();
+				}
+				else{
+					free(P);
+					P=calloc(sizeof(struct pairGS),1);
+					P->G=TD;
+					strcpy(P->S,g_strdup_printf("NOT ENOUGH STARS!"));
+					dialog();
+				}
+			}
+}
+
+static void resetupgrade(){
+	for(int i=0; i<3; i++)
+		upgrade[i]=0;
+	updateUpgrade();
 }
 
 static void setTower(int typ){
@@ -532,7 +568,7 @@ static void hidelev(){
 	gtk_container_remove(GTK_CONTAINER(TD),Box[3]);
 	gtk_container_add(GTK_CONTAINER(TD),Box[0]);
 	gtk_widget_show_all(Box[0]);
-	deswin();
+	deswin();//
 }//3->0
 
 static void showup(){
@@ -564,12 +600,11 @@ static void showlev(GtkWidget *button, gpointer user_date){
 				
 				roundnr=0;
 				life=15;
-				gold=250;//?
+				gold=250*GoldMult;
 				updatePlansza();
 				gtk_widget_show_all(Box[3]);
 				break;
 			}	
-	CLife=gtk_widget_get_frame_clock(LevelInfo[1]);
 }//0->3
 
 static void ExLev(){
@@ -604,11 +639,12 @@ static void ExLev(){
 }
 
 static void fail(){
+	closewin=gtk_button_new();
+	hidelev();
 	free(P);
 	P=calloc(sizeof(struct pairGS),1);
 	P->G=TD;//to jednak nie widget???
 	strcpy(P->S,"YOUR DEFENCE LOST!");
-	hidelev();
 	dialog();
 }
 
@@ -683,7 +719,7 @@ static void ROUND(){
 	g_timeout_add(30,(GSourceFunc)runda,NULL);
 
 	new=false;
-	gold+=100*(roundnr-1);//*goldmult;
+	gold+=100*(roundnr-1)*GoldMult;
 	updatePlansza();
 	if(roundnr==15)
 		win();
@@ -809,10 +845,6 @@ static void init(){
 			g_signal_connect(G_OBJECT(TabButton[i][j]),"clicked",G_CALLBACK(czyTower),NULL);
 		}
 
-//tu nie dziala frame clock init
-
-
-
 
 	//world init
 	GtkWidget *RESET=gtk_button_new_with_label("RESET\nPROGRESS");
@@ -859,17 +891,20 @@ static void init(){
 	gtk_grid_attach(GTK_GRID(UPLevel),UpgradeButton[2],2,0,1,1);
 	
 	UpgradeButton[3]=gtk_button_new_with_label("BUY");
-	
+	g_signal_connect(G_OBJECT(UpgradeButton[3]),"clicked",G_CALLBACK(starup),NULL);
 	gtk_grid_attach(GTK_GRID(UPLevel),UpgradeButton[3],0,1,1,1);
 	UpgradeButton[4]=gtk_button_new_with_label("BUY");
-	
+	g_signal_connect(G_OBJECT(UpgradeButton[4]),"clicked",G_CALLBACK(starup),NULL);
 	gtk_grid_attach(GTK_GRID(UPLevel),UpgradeButton[4],1,1,1,1);
 	UpgradeButton[5]=gtk_button_new_with_label("BUY");
-	
+	g_signal_connect(G_OBJECT(UpgradeButton[5]),"clicked",G_CALLBACK(starup),NULL);
 	gtk_grid_attach(GTK_GRID(UPLevel),UpgradeButton[5],2,1,1,1);
-	UpgradeButton[6]=gtk_button_new_with_label("RETURN");
-	g_signal_connect(G_OBJECT(UpgradeButton[6]),"clicked",G_CALLBACK(hideup),NULL);
+	UpgradeButton[6]=gtk_button_new_with_label("RESET");
+	g_signal_connect(G_OBJECT(UpgradeButton[6]),"clicked",G_CALLBACK(resetupgrade),NULL);
 	gtk_box_pack_start((GtkBox*)Box[1],UpgradeButton[6],TRUE,FALSE,0);
+	UpgradeButton[7]=gtk_button_new_with_label("RETURN");
+	g_signal_connect(G_OBJECT(UpgradeButton[7]),"clicked",G_CALLBACK(hideup),NULL);
+	gtk_box_pack_start((GtkBox*)Box[1],UpgradeButton[7],TRUE,FALSE,0);
 
 	//achievement init
 	for(int i=0; i<6; i++){
