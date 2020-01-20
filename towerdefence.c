@@ -20,9 +20,6 @@ GtkWidget *plansza;//przy okazji zloto, zycie i goldMult//pamietaj o signal conn
 GtkWidget *TabImage[12];
 GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
 
-GdkFrameClock *CLife;
-//GdkFrameClock *CTabButton[N+2][N+2];
-
 int unlocked[10];
 int upgrade[3];
 
@@ -32,9 +29,11 @@ int *enemyPattern;
 
 int gold;
 int life;
-//int GoldMult;
 int roundnr;
-//int costred;
+double GoldMult;
+int addDamage;
+double costred;
+
 
 static void save(){
 	FILE *sv=fopen("TDsave.txt","w");
@@ -66,7 +65,8 @@ struct tower{
 	int level;
 	int mode;//0-first,1-last,2-strong
 	struct tower *next;
-//costred?,dmg,range,ile tur?
+	int dmg;
+	int iletur;
 };
 
 struct parametry{
@@ -172,11 +172,81 @@ static void updateUpgrade(){
 //UpgradeButton
 //GoldMult
 //costred
+//addDamage
+//upgarde[3]
 	int ile=0;
 	for(int i=0; i<10; i++)
 		if(unlocked[i]<7)
 			ile+=unlocked[i];
 	gtk_button_set_label((GtkButton*)IleStar,g_strdup_printf("%d/30",ile));
+
+	int tmp1, tmp2, tmp3;
+
+	//upgrade koszt za 1,2,3; goldmult 1,2,3; damage wiez 6,12
+	if(upgarde[0]==0){
+		GoldMult=1.0;
+		tmp1=1;
+	}
+	if(upgarde[0]==1){
+		GoldMult=1.2;
+		tmp1=2;
+	}
+	if(upgarde[0]==2){
+		GoldMult=1.5;
+		tmp1=3;
+	}
+	if(upgarde[0]==3){
+		GoldMult=2.0;
+		tmp1=-1;
+	}
+
+	if(upgarde[1]==0){
+		costred=1.0;
+		tmp2=1;
+	}
+	if(upgarde[1]==1){
+		costred=0.9;
+		tmp2=2;
+	}
+	if(upgarde[1]==2){
+		costred=0.8;
+		tmp2=3;
+	}
+	if(upgarde[1]==3){
+		costred=0.5;
+		tmp2=-1;
+	}
+
+	if(upgarde[2]==0){
+		addDamage=0;
+		tmp3=6;
+	}
+	if(upgarde[2]==1){
+		addDamage=1;
+		tmp3=12;
+	}
+	if(upgarde[2]==2){
+		addDamage=3;
+		tmp3=-1;
+	}
+
+	gtk_button_set_label((GtkButton*)UpgradeButton[0],g_strdup_printf("+GOLD MULT\nLEVEL:%d",upgrade[0]));
+	gtk_button_set_label((GtkButton*)UpgradeButton[1],g_strdup_printf("-TOWER COST\nLEVEL:%d",upgrade[1]));
+	gtk_button_set_label((GtkButton*)UpgradeButton[2],g_strdup_printf("+DAMAGE\nLEVEL:%d",upgrade[2]));
+
+	if(tmp1!=-1)
+		gtk_button_set_label((GtkButton*)UpgradeButton[3],g_strdup_printf("BUY FOR %d",tmp1));
+	else
+		gtk_button_set_label((GtkButton*)UpgradeButton[3],"MAX LEVEL");	
+	if(tmp2!=-1)
+		gtk_button_set_label((GtkButton*)UpgradeButton[4],g_strdup_printf("BUY FOR %d",tmp2));	
+	else
+		gtk_button_set_label((GtkButton*)UpgradeButton[4],"MAX LEVEL");
+	if(tmp3!=-1)
+		gtk_button_set_label((GtkButton*)UpgradeButton[5],g_strdup_printf("BUY FOR %d",tmp3));
+	else
+		gtk_button_set_label((GtkButton*)UpgradeButton[5],"MAX LEVEL");
+
 }
 
 static void updateWorld(){
@@ -194,14 +264,15 @@ static void update(){
 }
 
 static void setTower(int typ){
-	int koszt,ran;
+	double koszt;
+	int ran,dmg;
 	if(typ==1){
 		koszt=100;
-		ran=2;
+		ran=3;
 	}
 	if(typ==2){
 		koszt=200;
-		ran=1;
+		ran=2;
 	}
 	if(typ==3){
 		koszt=250;
@@ -211,12 +282,16 @@ static void setTower(int typ){
 		koszt=300;
 		ran=1;
 	}
+	koszt*=costred;
+	dmg+=addDamage;
 
-	if(gold<koszt){//mnoznik na koszt!
+	//tworzac zobacz czy druid obok i dodaj buff
+
+	if(gold<(int)koszt){//mnoznik na koszt!
 		dialog();
 		return;
 	}
-	gold-=koszt;
+	gold-=(int)koszt;
 
 	struct tower *tmp=(struct tower*)malloc(sizeof(struct tower));
 	tmp->next=poziomy[Q].tow;
@@ -278,7 +353,7 @@ static void vulcan(){
 }
 
 static void druid(){
-//...
+//dodaj dmg i iletur do wiez w zasiegu?
 }
 
 static void clickZakup(){
@@ -343,6 +418,8 @@ static void clickUpgrade(){
 //sell - usuniecie z tow z przepieciem ptr, dla druida usuniecie efektow z wiez
 //lev up - init tow z innymi parametrami
 //mode change :)
+
+//type -> nazwa
 }
 
 //bool trwarunda ?
@@ -584,6 +661,7 @@ static bool runda(){
 		while(t!=NULL){
 			//przy ataku life=max(life-attack,0)
 			//...
+			//ile razy atak, policz najpierw ile druid4 i for int i do tej wartosci
 			//podzial na wieze, ile razy atakuje(druid), attack mode
 			t=t->next;
 		}
@@ -826,7 +904,6 @@ void TowDef(){//main function
 	ile przeciwnikow na runde, losowanie
 	tworzyc po jednej turze i testowac
 	
-	upgrade koszt za 1,2,3; goldmult 1,2,3; damage wiez 6,1
 
 	int rx,ry;
 	gtk_window_get_default_size(TD,rx,ry);
