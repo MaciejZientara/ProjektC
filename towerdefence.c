@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 #include "linker.h"
 #include <gdk/gdkwayland.h>
+#include <time.h>
 
 #define N 20
 
@@ -61,6 +62,7 @@ static void wq(){
 struct tower{
 	int x,y;
 	int type;//w zaleznosci od tego upgrade, range, damage, ...
+	int covsize;
 	int *cover;
 	int level;
 	int mode;//0-first,1-last,2-strong
@@ -156,12 +158,15 @@ static void updateAchievement(){
 			gtk_button_set_label((GtkButton*)AchievementButton[i],g_strdup_printf("STAGE %d FINISHED",i+1));
 		else
 			gtk_button_set_label((GtkButton*)AchievementButton[i],"X");
+
+	//dodaj hard mode na buuton[4]
+	//dodaj endless level
 	
 	bool ALLSTAR=true;
 	for(int i=0; i<10; i++)
 		if(unlocked[i]!=3)
 			ALLSTAR=false;
-	if(ALLSTAR)//dodaj endless level
+	if(ALLSTAR)
 		gtk_button_set_label((GtkButton*)AchievementButton[5],"FULL GAME CLEAR");
 	else
 		gtk_button_set_label((GtkButton*)AchievementButton[5],"X");
@@ -323,6 +328,8 @@ static void setTower(int typ){
 
 	//tworzac zobacz czy druid obok i dodaj buff
 
+	//iletur!!
+
 	if(gold<(int)koszt){//mnoznik na koszt!
 		dialog();
 		return;
@@ -336,37 +343,43 @@ static void setTower(int typ){
 	poziomy[Q].tow->x=X;
 	poziomy[Q].tow->y=Y;
 	poziomy[Q].tow->type=typ;
-	poziomy[Q].tow->mode=0;
+	poziomy[Q].tow->mode=1;
 	poziomy[Q].tow->level=1;
+//	poziomy[Q].tow->
+//	poziomy[Q].tow->dmg
+	poziomy[Q].tow->iletur=1;
 
 	//wylicz cover
 	int RoadRange=0;
 	for(int i=0; i<1+2*ran; i++)
 		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
+			if(X+i-ran>=0 && Y+j-ran>=0 && X+i-ran<N+2 && Y+j-ran<N+2)
 				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
 					RoadRange++;
 	
-	poziomy[Q].tow->cover=(int*)malloc(sizeof(int)*RoadRange);
+	poziomy[Q].tow->covsize=RoadRange;
+	poziomy[Q].tow->cover=(int*)calloc(sizeof(int)*RoadRange,1);
 	
 	int poz=0;
 	for(int i=0; i<1+2*ran; i++)
 		for(int j=0; j<1+2*ran; j++)
-			if(X-i-ran>=0 && Y-j-ran>=0 && X-i-ran<N+2 && Y-j-ran<N+2)
-				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road)
-					poziomy[Q].tow->cover[poz++]=poziomy[Q].tab[i][j].nr;
+			if(X+i-ran>=0 && Y+j-ran>=0 && X+i-ran<N+2 && Y+j-ran<N+2)
+				if(poziomy[Q].tab[X+i-ran][Y+j-ran].road){
+					poziomy[Q].tow->cover[poz++]=poziomy[Q].tab[X+i-ran][Y+j-ran].nr;
+				}
 
 	for(int i=0; i<RoadRange; i++){
-		int mini=666,poz=0;
+		int mini=666,poz=i;
 		for(int j=i; j<RoadRange; j++)
 			if(poziomy[Q].tow->cover[j]<mini){
 				mini=poziomy[Q].tow->cover[j];
 				poz=j;
 			}
-		int tmp=poziomy[Q].tow->cover[0];
-		poziomy[Q].tow->cover[0]=poziomy[Q].tow->cover[poz];
+		int tmp=poziomy[Q].tow->cover[i];
+		poziomy[Q].tow->cover[i]=poziomy[Q].tow->cover[poz];
 		poziomy[Q].tow->cover[poz]=tmp;
 	}
+
 
 	deswin();
 	updatePlansza();
@@ -526,7 +539,7 @@ static void respro(){
 static void DFS(int q, int x, int y){
 	int nr=1;
 	while(x!=poziomy[q].Fx || y!=poziomy[q].Fy){
-		poziomy[q].tab[x][y].nr=nr;
+		poziomy[q].tab[x][y].nr=nr;//printf("nr=%d\n",poziomy[q].tab[x][y].nr);
 		poziomy[q].ROAD[nr-1].nr=nr;
 		poziomy[q].ROAD[nr-1].x=x;
 		poziomy[q].ROAD[nr-1].y=y;
@@ -643,7 +656,7 @@ static void fail(){
 	hidelev();
 	free(P);
 	P=calloc(sizeof(struct pairGS),1);
-	P->G=TD;//to jednak nie widget???
+	P->G=TD;
 	strcpy(P->S,"YOUR DEFENCE LOST!");
 	dialog();
 }
@@ -655,10 +668,134 @@ static void win(){
 	update();
 }
 
+static void atakbalista(struct tower *t, int nr){
+	if(t->level==4){
+		srand(time(0));
+		int tmp=rand()%20;
+		if(!tmp){
+			poziomy[Q].ROAD[nr].enemy=0;
+			return;
+		}	
+	}
+	if(0>poziomy[Q].ROAD[nr].enemy-t->dmg)
+		poziomy[Q].ROAD[nr].enemy=0;
+	else
+		poziomy[Q].ROAD[nr].enemy=poziomy[Q].ROAD[nr].enemy-t->dmg;
+//updatePlansza();
+}
+static void atakcatapult(struct tower *t, int nr){
+	int zycie[5];
+	for(int i=0; i<5; i++)
+		if(nr+i-2>=0 && nr+i-2<poziomy[Q].ileR)
+			if(0>poziomy[Q].ROAD[nr+i-2].enemy-t->dmg)
+				poziomy[Q].ROAD[nr+i-2].enemy=0;
+			else
+				poziomy[Q].ROAD[nr+i-2].enemy=poziomy[Q].ROAD[nr+i-2].enemy-t->dmg;
+	
+	if(t->level==4){
+		if(nr-2>=0)
+			poziomy[Q].ROAD[nr-2].enemy=zycie[0];
+		if(nr+2<poziomy[Q].ileR)
+			poziomy[Q].ROAD[nr+2].enemy=zycie[4];
+	}
+	if(nr-1>=0)
+		poziomy[Q].ROAD[nr-1].enemy=zycie[1];
+	
+	poziomy[Q].ROAD[nr].enemy=zycie[2];
+	
+	if(nr+1<poziomy[Q].ileR)
+		poziomy[Q].ROAD[nr+1].enemy=zycie[3];
+
+}
+static void atakdragon(struct tower *t){
+	if(t->level==4){
+
+	}
+	else{
+
+	}
+
+}
+static void atakvulcan(struct tower *t){
+	if(t->level==4){
+
+	}
+	else{
+
+	}
+
+}
+
+static bool ataktower(struct tower *t,int ile){
+	//if(t->iletur)
+	//	t->iletur--;
+	//else
+	//	return false;
+for(int qq=0; qq<ile; qq++){
+	if(t->type==1 || t->type==2){//mode dependent
+		int n=t->covsize;
+		if(t->mode==1){
+			for(int i=n-1; i>=0; i--)
+				if(poziomy[Q].ROAD[t->cover[i]].enemy){
+printf("na %d enemy %d\n",t->cover[i],poziomy[Q].ROAD[t->cover[i]].enemy);
+					if(t->type==1)
+						atakbalista(t,t->cover[i]-1);
+					else
+						atakcatapult(t,t->cover[i]-1);
+					break;
+				}
+		}	
+		if(t->mode==2){
+			for(int i=0; i<n; i++)
+				if(poziomy[Q].ROAD[t->cover[i]].enemy){
+					if(t->type==1)
+						atakbalista(t,t->cover[i]-1);
+					else
+						atakcatapult(t,t->cover[i]-1);
+					break;
+				}
+		}	
+		if(t->mode==3){
+			int tmp=0, pos;
+			for(int i=0; i<n; i++)
+				if(poziomy[Q].ROAD[t->cover[i]].enemy>tmp){
+					tmp=poziomy[Q].ROAD[t->cover[i]].enemy;
+					pos=t->cover[i];
+				}
+			if(tmp){
+				if(t->type==1)
+					atakbalista(t,pos-1);
+				else
+					atakcatapult(t,pos-1);
+			}
+		}	
+	}
+	else{
+
+
+
+
+
+
+	}
+
+	//1-balista,2-catapult,3-shy dragon,4-vulcan,5-druid
+			//przy ataku life=max(life-attack,0)
+			//...
+			//ile razy atak, policz najpierw ile druid4 i for int i do tej wartosci
+			//podzial na wieze, ile razy atakuje(druid), attack mode
+	}
+	return true;
+}
+
 
 int iteri;
 bool new=false;
 static bool runda(){
+//LevelInfo[2]
+//for(int i=0; i<15; i++)
+//	gtk_button_set_label((GtkButton*)LevelInfo[2],g_strdup_printf("%d/15",i));
+
 //tower attack
 	int ileR=poziomy[Q].ileR;
 	//while(i<ileEnemy){
@@ -675,8 +812,14 @@ static bool runda(){
 					czy=true;
 					break;
 				}
-			if(!czy)
+			if(!czy){
+				new=false;
+				gold+=100*(roundnr+1)*GoldMult;
+				updatePlansza();
+				if(roundnr==15)
+					win();
 				return false;
+			}
 		}
 		if(life==0)
 			fail();
@@ -692,18 +835,22 @@ static bool runda(){
 		else{
 			poziomy[Q].ROAD[0].enemy=enemyPattern[iteri++];
 		}
-
+//timeout odpalic na iletur, ale calosc miec w while i tutaj odsiewac szybko druid
 		struct tower *t=poziomy[Q].tow;
 		while(t!=NULL){
-			//przy ataku life=max(life-attack,0)
-			//...
-			//ile razy atak, policz najpierw ile druid4 i for int i do tej wartosci
-			//podzial na wieze, ile razy atakuje(druid), attack mode
+			if(t->type==5){
+				t=t->next;
+				continue;
+			}
+			ataktower(t,t->iletur);
+//			int tmp=t->iletur;
+//			g_timeout_add(20,(GSourceFunc)ataktower,t);
+			//printf("1tmp=%d,t=%d\n",tmp,t->iletur);
+//			t->iletur=tmp;
+			//printf("2tmp=%d,t=%d\n",tmp,t->iletur);
 			t=t->next;
 		}
-
-		updatePlansza();
-
+	updatePlansza();
 	//}
 	return true;
 }
@@ -715,14 +862,12 @@ static void ROUND(){
 			roundcount++;
 		i++;
 	}
+	//ustawic bool trwa runda
+	//i dodac to do funkcji
+	//fajnie by bylo multi threading
 	iteri=i;
-	g_timeout_add(30,(GSourceFunc)runda,NULL);
-
-	new=false;
-	gold+=100*(roundnr-1)*GoldMult;
-	updatePlansza();
-	if(roundnr==15)
-		win();
+	g_timeout_add(60,(GSourceFunc)runda,NULL);//dlaczego konczy ROUND ale dalej robi round?
+	//juz nie trwa runda
 }
 
 static void init(){
