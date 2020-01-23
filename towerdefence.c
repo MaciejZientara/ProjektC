@@ -65,7 +65,7 @@ struct tower{
 	int covsize;
 	int *cover;
 	int level;
-	int mode;//0-first,1-last,2-strong
+	int mode;//1-first,2-last,3-strong
 	struct tower *next;
 	int dmg;
 	int iletur;
@@ -306,31 +306,44 @@ static void resetupgrade(){
 
 static void setTower(int typ){
 	double koszt;
-	int ran,dmg;
+	int ran,dmg,ile=1;
 	if(typ==1){
 		koszt=100;
 		ran=3;
+		dmg=1;
 	}
 	if(typ==2){
 		koszt=200;
 		ran=2;
+		dmg=2;
 	}
 	if(typ==3){
 		koszt=250;
 		ran=1;
+		dmg=10;
 	}
 	if(typ==4){
 		koszt=300;
 		ran=1;
+		dmg=5;
 	}
 	koszt*=costred;
 	dmg+=addDamage;
 
-	//tworzac zobacz czy druid obok i dodaj buff
+	struct tower *t=poziomy[Q].tow;
+	while(t!=NULL){
+		if(abs(X-t->x)<=2 && abs(Y-t->y)<=2){
+			if(t->type==5){
+				//if(t->level>=1)koszt*=0.9;
+				//if(t->level>=2)koszt*=0.9;
+				if(t->level>=3)dmg+=1;
+				if(t->level>=4)ile+=1;
+			}
+		}
+		t=t->next;
+	}
 
-	//iletur!!
-
-	if(gold<(int)koszt){//mnoznik na koszt!
+	if(gold<(int)koszt){
 		dialog();
 		return;
 	}
@@ -339,15 +352,15 @@ static void setTower(int typ){
 	struct tower *tmp=(struct tower*)malloc(sizeof(struct tower));
 	tmp->next=poziomy[Q].tow;
 	poziomy[Q].tow=tmp;
-
+	
 	poziomy[Q].tow->x=X;
 	poziomy[Q].tow->y=Y;
 	poziomy[Q].tow->type=typ;
 	poziomy[Q].tow->mode=1;
 	poziomy[Q].tow->level=1;
 //	poziomy[Q].tow->
-//	poziomy[Q].tow->dmg
-	poziomy[Q].tow->iletur=1;
+	poziomy[Q].tow->dmg=dmg;
+	poziomy[Q].tow->iletur=ile;
 
 	//wylicz cover
 	int RoadRange=0;
@@ -380,7 +393,6 @@ static void setTower(int typ){
 		poziomy[Q].tow->cover[poz]=tmp;
 	}
 
-
 	deswin();
 	updatePlansza();
 }
@@ -406,6 +418,8 @@ static void druid(){
 }
 
 static void clickZakup(){
+	if(GTK_IS_WIDGET(closewin))
+		deswin();
 	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(okno),"BUY TOWER");
 	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
@@ -462,13 +476,175 @@ static void clickZakup(){
 	gtk_widget_show_all(okno);
 }
 
-static void clickUpgrade(){
-//level up, sell, attack mode change
-//sell - usuniecie z tow z przepieciem ptr, dla druida usuniecie efektow z wiez
-//lev up - init tow z innymi parametrami
-//mode change :)
+static struct tower* findwieza(){
+	struct tower *t=poziomy[Q].tow;
+	while(t!=NULL){
+		if(t->x==X && t->y==Y)
+			break;
+		t=t->next;
+	}
+	return t;
+}
 
-//type -> nazwa
+static void zamkupg(){
+	//gtk_button_set_label() albo styl do normy
+	deswin();
+}
+
+static void upp(){
+	struct tower *t=findwieza();
+	
+	double koszt=t->level;
+	if(t->type==1)koszt+=100;
+	if(t->type==2)koszt+=200;
+	if(t->type==3)koszt+=250;
+	if(t->type==4)koszt+=300;
+	if(t->type==5)koszt+=400;
+
+	struct tower *f=poziomy[Q].tow;
+	while(f!=NULL){
+		if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
+			if(f->type==5){
+				if(f->level>=1)koszt*=0.9;
+				if(f->level>=2)koszt*=0.9;
+			}
+		}
+		f=f->next;
+	}
+
+	if(koszt>gold){
+		dialog();
+		return;
+	}
+	gold-=(int)koszt;
+	
+	t->level++;
+	t->dmg++;
+	updatePlansza();
+	zamkupg();
+}
+
+static void modechange(GtkWidget *button, gpointer user_date){
+	struct tower *t=findwieza();
+	t->mode=t->mode%3+1;
+	if(t->mode==1)
+		gtk_button_set_label((GtkButton*)button,"mode:FIRST");
+	if(t->mode==2)
+		gtk_button_set_label((GtkButton*)button,"mode:LAST");
+	if(t->mode==3)
+		gtk_button_set_label((GtkButton*)button,"mode:STRONG");
+}
+
+static void sello(){	
+	struct tower *t=poziomy[Q].tow;
+	
+	if(t->x==X && t->y==Y){
+		double koszt=t->level;
+		if(t->type==1)koszt+=100;
+		if(t->type==2)koszt+=200;
+		if(t->type==3)koszt+=250;
+		if(t->type==4)koszt+=300;
+		if(t->type==5)koszt+=400;
+		gold+=t->level*0.9*koszt;
+	
+		struct tower *tmp=t->next;
+		free(t);
+		poziomy[Q].tow=tmp;
+		updatePlansza();
+		zamkupg();
+		return;
+	}
+	while(t->next->x!=X || t->next->y!=Y)
+		t=t->next;
+	
+	double koszt=t->next->level;
+	if(t->next->type==1)koszt+=100;
+	if(t->next->type==2)koszt+=200;
+	if(t->next->type==3)koszt+=250;
+	if(t->next->type==4)koszt+=300;
+	if(t->next->type==5)koszt+=400;
+	gold+=t->next->level*0.9*koszt;
+	
+	struct tower *tmp=t->next->next;
+	free(t->next);
+	t->next=tmp;
+	updatePlansza();
+	zamkupg();
+}
+
+static void clickUpgrade(){
+	if(GTK_IS_WIDGET(closewin))
+		deswin();
+	
+	struct tower *t=findwieza();
+
+	//zmien label czy podswietl w style TabButton[X][Y]
+
+	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
+	if(t->type==1)
+		gtk_window_set_title(GTK_WINDOW(okno),g_strdup_printf("BALISTA:%d",t->level));
+	if(t->type==2)
+		gtk_window_set_title(GTK_WINDOW(okno),g_strdup_printf("CATAPULT:%d",t->level));
+	if(t->type==3)
+		gtk_window_set_title(GTK_WINDOW(okno),g_strdup_printf("SHY DRAGON:%d",t->level));
+	if(t->type==4)
+		gtk_window_set_title(GTK_WINDOW(okno),g_strdup_printf("VULCAN:%d",t->level));
+	if(t->type==5)
+		gtk_window_set_title(GTK_WINDOW(okno),g_strdup_printf("DRUID:%d",t->level));
+
+	gtk_window_set_position(GTK_WINDOW(okno),GTK_WIN_POS_CENTER);
+	gtk_container_set_border_width(GTK_CONTAINER(okno),10);
+	closewin=okno;
+	g_signal_connect(G_OBJECT(okno),"destroy",G_CALLBACK(zamkupg),NULL);
+
+	GtkWidget *boxo=gtk_box_new(GTK_ORIENTATION_VERTICAL,5);
+	gtk_container_add(GTK_CONTAINER(okno),boxo);
+
+	GtkWidget *grido=gtk_grid_new();
+	gtk_grid_set_row_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_row_homogeneous(GTK_GRID(grido), TRUE);
+	gtk_grid_set_column_spacing(GTK_GRID(grido), 5);
+	gtk_grid_set_column_homogeneous(GTK_GRID(grido), TRUE);
+
+	gtk_box_pack_start((GtkBox*)boxo,grido,TRUE,FALSE,0);
+
+	free(P);
+	P=calloc(sizeof(struct pairGS),1);
+	P->G=okno;
+	strcpy(P->S,g_strdup_printf("NOT ENOUGH GOLD!"));
+
+	GtkWidget *opis=gtk_button_new_with_label("TOWER SETTINGS");
+	gtk_grid_attach(GTK_GRID(grido),opis,0,0,1,1);
+
+	GtkWidget *t1=gtk_button_new();
+	if(t->level<4){
+		gtk_button_set_label((GtkButton*)t1,g_strdup_printf("UPGRADE %d->%d",t->level,t->level+1));
+		g_signal_connect(G_OBJECT(t1),"clicked",G_CALLBACK(upp),NULL);
+	}
+	else
+		gtk_button_set_label((GtkButton*)t1,"MAX LEVEL");
+
+	gtk_grid_attach(GTK_GRID(grido),t1,0,1,1,1);
+	GtkWidget *t2=gtk_button_new();
+	if(t->mode==1)
+		gtk_button_set_label((GtkButton*)t2,"mode:FIRST");
+	if(t->mode==2)
+		gtk_button_set_label((GtkButton*)t2,"mode:LAST");
+	if(t->mode==3)
+		gtk_button_set_label((GtkButton*)t2,"mode:STRONG");
+	g_signal_connect(G_OBJECT(t2),"clicked",G_CALLBACK(modechange),NULL);
+	gtk_grid_attach(GTK_GRID(grido),t2,0,2,1,1);
+	GtkWidget *sell=gtk_button_new_with_label("SELL");
+	g_signal_connect(G_OBJECT(sell),"clicked",G_CALLBACK(sello),NULL);
+	gtk_grid_attach(GTK_GRID(grido),sell,0,3,1,1);
+	GtkWidget *exit=gtk_button_new_with_label("CANCEL");
+	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(zamkupg),NULL);
+	gtk_grid_attach(GTK_GRID(grido),exit,0,4,1,1);
+	
+	gtk_widget_show_all(okno);
+
+//sell - usuniecie z tow z przepieciem ptr, dla druida usuniecie efektow z wiez
 }
 
 //bool trwarunda ?
@@ -483,9 +659,9 @@ static void czyTower(GtkWidget *button, gpointer user_date){
 	if(!poziomy[Q].tab[x][y].land)
 		return;
 	bool czy=false;
-	struct tower *t=poziomy[Q].tow;//wstaw ifa
+	struct tower *t=poziomy[Q].tow;
 	while(t!=NULL){	
-		if(poziomy[Q].tow->x==x && poziomy[Q].tow->y==y)
+		if(t->x==x && t->y==y)
 			czy=true;
 		t=t->next;
 	}
@@ -613,7 +789,7 @@ static void showlev(GtkWidget *button, gpointer user_date){
 				
 				roundnr=0;
 				life=15;
-				gold=250*GoldMult;
+				gold=250*GoldMult*5;//!!!
 				updatePlansza();
 				gtk_widget_show_all(Box[3]);
 				break;
@@ -681,16 +857,16 @@ static void atakbalista(struct tower *t, int nr){
 		poziomy[Q].ROAD[nr].enemy=0;
 	else
 		poziomy[Q].ROAD[nr].enemy=poziomy[Q].ROAD[nr].enemy-t->dmg;
-//updatePlansza();
 }
+
 static void atakcatapult(struct tower *t, int nr){
 	int zycie[5];
 	for(int i=0; i<5; i++)
 		if(nr+i-2>=0 && nr+i-2<poziomy[Q].ileR)
 			if(0>poziomy[Q].ROAD[nr+i-2].enemy-t->dmg)
-				poziomy[Q].ROAD[nr+i-2].enemy=0;
+				zycie[i]=0;
 			else
-				poziomy[Q].ROAD[nr+i-2].enemy=poziomy[Q].ROAD[nr+i-2].enemy-t->dmg;
+				zycie[i]=poziomy[Q].ROAD[nr+i-2].enemy-t->dmg;
 	
 	if(t->level==4){
 		if(nr-2>=0)
@@ -707,23 +883,51 @@ static void atakcatapult(struct tower *t, int nr){
 		poziomy[Q].ROAD[nr+1].enemy=zycie[3];
 
 }
+
 static void atakdragon(struct tower *t){
+	bool czy=false;
 	if(t->level==4){
-
+		for(int i=0; i<t->covsize; i++)
+			if(poziomy[Q].ROAD[t->cover[i]].enemy){
+				czy=true;
+				break;
+			}
 	}
 	else{
-
+		czy=true;
+		for(int i=0; i<t->covsize; i++){
+			if(!poziomy[Q].ROAD[t->cover[i]].enemy){
+				czy=false;
+				break;
+			}
+		}
 	}
 
+	if(czy)
+		for(int i=0; i<t->covsize; i++){
+			if(0>poziomy[Q].ROAD[t->cover[i]].enemy-t->dmg)
+				poziomy[Q].ROAD[t->cover[i]].enemy=0;
+			else
+				poziomy[Q].ROAD[t->cover[i]].enemy=poziomy[Q].ROAD[i].enemy-t->dmg;
+		}
 }
+
 static void atakvulcan(struct tower *t){
-	if(t->level==4){
-
+	srand(time(0));
+	int j;
+	if(t->level>=1)
+		j=1;
+	if(t->level==3)
+		j=2;
+	if(t->level==4)
+		j=4;
+	for(int i=0; i<j; i++){
+		int tmp=t->cover[rand()%t->covsize];
+		if(0>poziomy[Q].ROAD[tmp].enemy-t->dmg)
+			poziomy[Q].ROAD[tmp].enemy=0;
+		else
+			poziomy[Q].ROAD[tmp].enemy=poziomy[Q].ROAD[tmp].enemy-t->dmg;
 	}
-	else{
-
-	}
-
 }
 
 static bool ataktower(struct tower *t,int ile){
@@ -737,11 +941,11 @@ for(int qq=0; qq<ile; qq++){
 		if(t->mode==1){
 			for(int i=n-1; i>=0; i--)
 				if(poziomy[Q].ROAD[t->cover[i]].enemy){
-printf("na %d enemy %d\n",t->cover[i],poziomy[Q].ROAD[t->cover[i]].enemy);
+//printf("na %d enemy %d\n",t->cover[i],poziomy[Q].ROAD[t->cover[i]].enemy);
 					if(t->type==1)
-						atakbalista(t,t->cover[i]-1);
+						atakbalista(t,t->cover[i]);
 					else
-						atakcatapult(t,t->cover[i]-1);
+						atakcatapult(t,t->cover[i]);
 					break;
 				}
 		}	
@@ -749,9 +953,9 @@ printf("na %d enemy %d\n",t->cover[i],poziomy[Q].ROAD[t->cover[i]].enemy);
 			for(int i=0; i<n; i++)
 				if(poziomy[Q].ROAD[t->cover[i]].enemy){
 					if(t->type==1)
-						atakbalista(t,t->cover[i]-1);
+						atakbalista(t,t->cover[i]);
 					else
-						atakcatapult(t,t->cover[i]-1);
+						atakcatapult(t,t->cover[i]);
 					break;
 				}
 		}	
@@ -764,19 +968,17 @@ printf("na %d enemy %d\n",t->cover[i],poziomy[Q].ROAD[t->cover[i]].enemy);
 				}
 			if(tmp){
 				if(t->type==1)
-					atakbalista(t,pos-1);
+					atakbalista(t,pos);
 				else
-					atakcatapult(t,pos-1);
+					atakcatapult(t,pos);
 			}
 		}	
 	}
 	else{
-
-
-
-
-
-
+		if(t->type==3)
+			atakdragon(t);
+		else
+			atakvulcan(t);
 	}
 
 	//1-balista,2-catapult,3-shy dragon,4-vulcan,5-druid
@@ -866,7 +1068,7 @@ static void ROUND(){
 	//i dodac to do funkcji
 	//fajnie by bylo multi threading
 	iteri=i;
-	g_timeout_add(60,(GSourceFunc)runda,NULL);//dlaczego konczy ROUND ale dalej robi round?
+	g_timeout_add(200,(GSourceFunc)runda,NULL);//dlaczego konczy ROUND ale dalej robi round?
 	//juz nie trwa runda
 }
 
