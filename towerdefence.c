@@ -358,7 +358,6 @@ static void setTower(int typ){
 	poziomy[Q].tow->type=typ;
 	poziomy[Q].tow->mode=1;
 	poziomy[Q].tow->level=1;
-//	poziomy[Q].tow->
 	poziomy[Q].tow->dmg=dmg;
 	poziomy[Q].tow->iletur=ile;
 
@@ -414,6 +413,26 @@ static void vulcan(){
 }
 
 static void druid(){
+	double koszt=400;
+	koszt*=costred;
+
+	if(gold<(int)koszt){
+		dialog();
+		return;
+	}
+	gold-=(int)koszt;
+
+	struct tower *tmp=(struct tower*)malloc(sizeof(struct tower));
+	tmp->next=poziomy[Q].tow;
+	poziomy[Q].tow=tmp;
+	
+	poziomy[Q].tow->x=X;
+	poziomy[Q].tow->y=Y;
+	poziomy[Q].tow->type=5;
+	poziomy[Q].tow->level=1;
+
+	deswin();
+	updatePlansza();
 //dodaj dmg i iletur do wiez w zasiegu?
 }
 
@@ -449,13 +468,11 @@ static void clickZakup(){
 	GtkWidget *t1=gtk_button_new_with_label("BALISTA\n100 GOLD");
 	g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t1,1,1,1,1);
+
 	GtkWidget *t2=gtk_button_new_with_label("CATAPULT\n200 GOLD");
 	g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t2,1,2,1,1);
 	
-	//GtkWidget *t3=gtk_button_new_with_label("TRAP BUILDER\n150 GOLD");//moze sobie darowac?
-	//g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
-	//gtk_grid_attach(GTK_GRID(grido),t3,0,2,1,1);
 	GtkWidget *t4=gtk_button_new_with_label("SHY DRAGON\n250 GOLD");
 	g_signal_connect(G_OBJECT(t4),"clicked",shydragon,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t4,1,3,1,1);
@@ -463,6 +480,7 @@ static void clickZakup(){
 	GtkWidget *t5=gtk_button_new_with_label("VULCAN\n300 GOLD");
 	g_signal_connect(G_OBJECT(t5),"clicked",vulcan,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t5,1,4,1,1);
+
 	GtkWidget *t6=gtk_button_new_with_label("DRUID\n400 GOLD");
 	g_signal_connect(G_OBJECT(t6),"clicked",druid,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t6,1,5,1,1);
@@ -470,8 +488,6 @@ static void clickZakup(){
 	GtkWidget *exit=gtk_button_new_with_label("CANCEL");
 	g_signal_connect(G_OBJECT(exit),"clicked",G_CALLBACK(deswin),NULL);
 	gtk_grid_attach(GTK_GRID(grido),exit,1,6,1,1);
-
-//jak zrobic driuda, trap builder?
 
 	gtk_widget_show_all(okno);
 }
@@ -495,23 +511,26 @@ static void upp(){
 	struct tower *t=findwieza();
 	
 	double koszt=t->level;
+	if(koszt==3)koszt*=3;//?
 	if(t->type==1)koszt+=100;
 	if(t->type==2)koszt+=200;
 	if(t->type==3)koszt+=250;
 	if(t->type==4)koszt+=300;
 	if(t->type==5)koszt+=400;
 
-	struct tower *f=poziomy[Q].tow;
-	while(f!=NULL){
-		if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
-			if(f->type==5){
-				if(f->level>=1)koszt*=0.9;
-				if(f->level>=2)koszt*=0.9;
+	if(t->type!=5){
+		struct tower *f=poziomy[Q].tow;
+		while(f!=NULL){
+			if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
+				if(f->type==5){
+					if(f->level>=1)koszt*=0.9;
+					if(f->level>=2)koszt*=0.9;
+				}
 			}
+			f=f->next;
 		}
-		f=f->next;
 	}
-
+	
 	if(koszt>gold){
 		dialog();
 		return;
@@ -519,7 +538,20 @@ static void upp(){
 	gold-=(int)koszt;
 	
 	t->level++;
-	t->dmg++;
+	if(t->type!=5)
+		t->dmg++;
+	else{
+		struct tower *f=poziomy[Q].tow;
+		while(f!=NULL){
+			if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
+				if(f->type!=5){
+					if(t->level==3)f->dmg+=1;
+					if(t->level==4)f->iletur=1;
+				}
+			}
+			f=f->next;
+		}
+	}
 	updatePlansza();
 	zamkupg();
 }
@@ -547,6 +579,20 @@ static void sello(){
 		if(t->type==5)koszt+=400;
 		gold+=t->level*0.9*koszt;
 	
+	if(t->type==5){
+		struct tower *f=poziomy[Q].tow;
+		while(f!=NULL){
+			if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
+				if(f->type!=5){
+					if(t->level>=3)f->dmg-=1;
+					if(t->level==4)f->iletur-=1;
+				}
+			}
+			f=f->next;
+		}
+	}
+	//druid
+
 		struct tower *tmp=t->next;
 		free(t);
 		poziomy[Q].tow=tmp;
@@ -565,6 +611,20 @@ static void sello(){
 	if(t->next->type==5)koszt+=400;
 	gold+=t->next->level*0.9*koszt;
 	
+	if(t->next->type==5){
+		struct tower *f=poziomy[Q].tow;
+		while(f!=NULL){
+			if(abs(X-f->x)<=2 && abs(Y-f->y)<=2){
+				if(f->type!=5){
+					if(t->next->level>=3)f->dmg-=1;
+					if(t->next->level==4)f->iletur-=1;
+				}
+			}
+			f=f->next;
+		}
+	}
+	//druid
+
 	struct tower *tmp=t->next->next;
 	free(t->next);
 	t->next=tmp;
@@ -616,7 +676,7 @@ static void clickUpgrade(){
 
 	GtkWidget *opis=gtk_button_new_with_label("TOWER SETTINGS");
 	gtk_grid_attach(GTK_GRID(grido),opis,0,0,1,1);
-
+//dodac koszt upgrade do label!!!
 	GtkWidget *t1=gtk_button_new();
 	if(t->level<4){
 		gtk_button_set_label((GtkButton*)t1,g_strdup_printf("UPGRADE %d->%d",t->level,t->level+1));
@@ -789,7 +849,7 @@ static void showlev(GtkWidget *button, gpointer user_date){
 				
 				roundnr=0;
 				life=15;
-				gold=250*GoldMult*5;//!!!
+				gold=250*GoldMult;
 				updatePlansza();
 				gtk_widget_show_all(Box[3]);
 				break;
@@ -838,7 +898,9 @@ static void fail(){
 }
 
 static void win(){
-	unlocked[Q]=(life-1)/3+1;
+	unlocked[Q]=(life-1)/5+1;
+	if(Q<9)
+		unlocked[Q+1]=0;
 	//save();
 	hidelev();
 	update();
@@ -908,7 +970,7 @@ static void atakdragon(struct tower *t){
 			if(0>poziomy[Q].ROAD[t->cover[i]].enemy-t->dmg)
 				poziomy[Q].ROAD[t->cover[i]].enemy=0;
 			else
-				poziomy[Q].ROAD[t->cover[i]].enemy=poziomy[Q].ROAD[i].enemy-t->dmg;
+				poziomy[Q].ROAD[t->cover[i]].enemy=poziomy[Q].ROAD[t->cover[i]].enemy-t->dmg;
 		}
 }
 
