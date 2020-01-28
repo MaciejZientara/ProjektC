@@ -35,6 +35,8 @@ double GoldMult;
 int addDamage;
 double costred;
 
+int HARD=1;
+bool ENDLESS;
 
 static void save(){
 	FILE *sv=fopen("TDsave.txt","w");
@@ -151,7 +153,7 @@ static void updatePlansza(){
 
 static void updateAchievement(){
 	for(int i=0; i<5; i++)
-		if(unlocked[i*2] && unlocked[i*2+1] && unlocked[i*2]<7 && unlocked[i*2+1<7])
+		if(unlocked[i*2] && unlocked[i*2+1] && unlocked[i*2]<7 && unlocked[i*2+1]<7)
 			gtk_button_set_label((GtkButton*)AchievementButton[i],g_strdup_printf("STAGE %d FINISHED",i+1));
 		else
 			gtk_button_set_label((GtkButton*)AchievementButton[i],"X");
@@ -462,23 +464,23 @@ static void clickZakup(){
 	GtkWidget *opis=gtk_button_new_with_label("WHICH TOWER WOULD YOU LIKE?");
 	gtk_grid_attach(GTK_GRID(grido),opis,1,0,1,1);
 	
-	GtkWidget *t1=gtk_button_new_with_label("BALISTA\n100 GOLD");
+	GtkWidget *t1=gtk_button_new_with_label(g_strdup_printf("BALISTA\n%d GOLD",(int)(100*costred)));
 	g_signal_connect(G_OBJECT(t1),"clicked",balista,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t1,1,1,1,1);
 
-	GtkWidget *t2=gtk_button_new_with_label("CATAPULT\n200 GOLD");
+	GtkWidget *t2=gtk_button_new_with_label(g_strdup_printf("CATAPULT\n%d GOLD",(int)(200*costred)));
 	g_signal_connect(G_OBJECT(t2),"clicked",catapult,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t2,1,2,1,1);
 	
-	GtkWidget *t4=gtk_button_new_with_label("SHY DRAGON\n250 GOLD");
+	GtkWidget *t4=gtk_button_new_with_label(g_strdup_printf("SHY DRAGON\n%d GOLD",(int)(250*costred)));
 	g_signal_connect(G_OBJECT(t4),"clicked",shydragon,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t4,1,3,1,1);
 	
-	GtkWidget *t5=gtk_button_new_with_label("VULCAN\n300 GOLD");
+	GtkWidget *t5=gtk_button_new_with_label(g_strdup_printf("VULCAN\n%d GOLD",(int)(300*costred)));
 	g_signal_connect(G_OBJECT(t5),"clicked",vulcan,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t5,1,4,1,1);
 
-	GtkWidget *t6=gtk_button_new_with_label("DRUID\n400 GOLD");
+	GtkWidget *t6=gtk_button_new_with_label(g_strdup_printf("DRUID\n%d GOLD",(int)(400*costred)));
 	g_signal_connect(G_OBJECT(t6),"clicked",druid,NULL);
 	gtk_grid_attach(GTK_GRID(grido),t6,1,5,1,1);
 	
@@ -645,7 +647,7 @@ static void clickUpgrade(){
 	
 	for(int i=0; i<1+2*ran; i++)
 		for(int j=0; j<1+2*ran; j++)
-			if(X+i-ran>=0 && Y+j-ran>=0 && X+i-ran<N+2 && Y+j-ran<N+2)
+			if(X+i-ran>0 && Y+j-ran>0 && X+i-ran<N+1 && Y+j-ran<N+1)
 				gtk_widget_set_name(TabButton[X+i-ran][Y+j-ran],"towran");
 	gtk_widget_set_name(TabButton[X][Y],"seltow");
 
@@ -897,7 +899,8 @@ static void ExLev(){
 }
 
 static void fail(){
-	closewin=gtk_button_new();
+	if(GTK_IS_WIDGET(closewin))
+		closewin=gtk_button_new();
 	hidelev();
 	free(P);
 	P=calloc(sizeof(struct pairGS),1);
@@ -907,10 +910,15 @@ static void fail(){
 }
 
 static void win(){
+	if(GTK_IS_WIDGET(closewin))
+		closewin=gtk_button_new();
+	if(HARD==1){
 	unlocked[Q]=(life-1)/5+1;
 	if(Q<9)
 		unlocked[Q+1]=0;
-	//save();
+	}
+	else
+		unlocked[Q]=2*((life-1)/5+1);
 	hidelev();
 	update();
 }
@@ -928,6 +936,7 @@ static void atakbalista(struct tower *t, int nr){
 		poziomy[Q].ROAD[nr].enemy=0;
 	else
 		poziomy[Q].ROAD[nr].enemy=poziomy[Q].ROAD[nr].enemy-t->dmg;
+	gtk_button_set_label((GtkButton*)TabButton[poziomy[Q].ROAD[nr].x][poziomy[Q].ROAD[nr].y],"!!");
 }
 
 static void atakcatapult(struct tower *t, int nr){
@@ -1001,7 +1010,7 @@ static void atakvulcan(struct tower *t){
 	}
 }
 
-static bool ataktower(struct tower *t,int ile){
+static void ataktower(struct tower *t,int ile){
 	//if(t->iletur)
 	//	t->iletur--;
 	//else
@@ -1058,7 +1067,7 @@ for(int qq=0; qq<ile; qq++){
 			//ile razy atak, policz najpierw ile druid4 i for int i do tej wartosci
 			//podzial na wieze, ile razy atakuje(druid), attack mode
 	}
-	return true;
+	return;
 }
 
 
@@ -1089,12 +1098,19 @@ static bool runda(){
 				new=false;
 				gold+=100*(roundnr+1)*GoldMult;
 				updatePlansza();
-				if(roundnr==15)
-					win();
+				if(!ENDLESS){
+					if(roundnr==15)
+						win();
+				}
+				else{
+					if(!roundnr%15)
+						iteri=0;
+						new=false;
+				}
 				return false;
 			}
 		}
-		if(life==0)
+		if(life<=0)
 			fail();
 		
 		life-=poziomy[Q].ROAD[ileR-1].enemy;
@@ -1106,7 +1122,8 @@ static bool runda(){
 			poziomy[Q].ROAD[0].enemy=0;
 		}
 		else{
-			poziomy[Q].ROAD[0].enemy=enemyPattern[iteri++];
+			poziomy[Q].ROAD[0].enemy=enemyPattern[iteri++]*HARD*(Q/2+1)*(10*(roundnr/15)+1);
+			//printf("pat=%d,h=%d,q=%d,r=%d\n",enemyPattern[iteri-1],HARD,Q/2+1,(10*(roundnr/15)+1));
 		}
 		struct tower *t=poziomy[Q].tow;
 		while(t!=NULL){
@@ -1124,14 +1141,77 @@ static bool runda(){
 
 static void ROUND(){
 	int  i=0, roundcount=0;
-	while(roundcount<roundnr){
-		if(enemyPattern[i]==-1)
-			roundcount++;
-		i++;
+	if(!ENDLESS){
+		while(roundcount<roundnr){
+			if(enemyPattern[i]==-1)
+				roundcount++;
+			i++;
+		}
+	}
+	else{
+		while(roundcount<roundnr%15){
+			if(enemyPattern[i]==-1)
+				roundcount++;
+			i++;
+		}
 	}
 	iteri=i;
 	g_timeout_add(200,(GSourceFunc)runda,NULL);
 }
+
+static void hardmode(){
+	bool czy=true;
+	for(int i=0; i<10; i++)
+		if(unlocked[i]==7)
+			czy=false;
+
+	if(!czy)
+		return;
+	
+	if(HARD==1){
+		HARD=2;
+		free(P);
+		P=calloc(sizeof(struct pairGS),1);
+		P->G=TD;
+		strcpy(P->S,"HARDMODE ON!");
+		dialog();
+	}
+	else{
+		HARD=1;
+		free(P);
+		P=calloc(sizeof(struct pairGS),1);
+		P->G=TD;
+		strcpy(P->S,"HARDMODE OFF!");
+		dialog();
+	}
+}
+
+static void endless(){
+	bool ALLSTAR=true;
+	for(int i=0; i<10; i++)
+		if(unlocked[i]!=3)
+			ALLSTAR=false;
+	if(!ALLSTAR)
+		return;
+
+	if(!ENDLESS){
+		ENDLESS=true;
+		free(P);
+		P=calloc(sizeof(struct pairGS),1);
+		P->G=TD;
+		strcpy(P->S,"ENDLESSMODE ON!");
+		dialog();
+	}
+	else{
+		ENDLESS=false;
+		free(P);
+		P=calloc(sizeof(struct pairGS),1);
+		P->G=TD;
+		strcpy(P->S,"ENDLESSMODE OFF!");
+		dialog();
+	}
+}
+
 
 static void init(){
 	FILE *level=fopen("level","r");
@@ -1332,6 +1412,10 @@ static void init(){
 	AchievementButton[6]=gtk_button_new_with_label("RETURN");
 	g_signal_connect(G_OBJECT(AchievementButton[6]),"clicked",G_CALLBACK(hideach),NULL);
 	gtk_box_pack_start((GtkBox*)Box[2],AchievementButton[6],TRUE,FALSE,0);
+
+	g_signal_connect(G_OBJECT(AchievementButton[4]),"clicked",G_CALLBACK(hardmode),NULL);
+	g_signal_connect(G_OBJECT(AchievementButton[5]),"clicked",G_CALLBACK(endless),NULL);
+
 }
 
 static GtkWidget* gra(){
