@@ -6,6 +6,10 @@
 
 int main(int argc, char *argv[]){
 	gtk_init(&argc,&argv);
+
+GtkCssProvider *css_provider=css_provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_path(css_provider, "style.css", NULL);
+  gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 	
 	Main=gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	g_signal_connect(G_OBJECT(Main), "destroy",G_CALLBACK(gtk_main_quit), NULL);

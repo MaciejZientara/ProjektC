@@ -14,12 +14,12 @@ GtkWidget *LevelButton[10];
 GtkWidget *UpgradeButton[8];
 GtkWidget *IleStar;
 GtkWidget *AchievementButton[7];
-GtkWidget *TabButton[N+2][N+2];//tylko raz init planszy i przyciskow, potem update
+GtkWidget *TabButton[N+2][N+2];
 GtkWidget *LevelInfo[3];//gold,life,round
 GtkWidget *NextRound;
-GtkWidget *plansza;//przy okazji zloto, zycie i goldMult//pamietaj o signal connect na zakup
-GtkWidget *TabImage[12];
-GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level//,4-zakup wiez
+GtkWidget *plansza;
+//GtkWidget *TabImage[12];
+GtkWidget *Box[4];//0-world,1-upgrade,2-achivement,3-level
 
 int unlocked[10];
 int upgrade[3];
@@ -101,7 +101,7 @@ static void deswin(){
 }
 
 
-static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
+static void updatePlansza(){
 	gtk_button_set_label((GtkButton*)LevelInfo[0],g_strdup_printf("GOLD: %d",gold));
 	gtk_button_set_label((GtkButton*)LevelInfo[1],g_strdup_printf("LIFE: %d",life));
 	gtk_button_set_label((GtkButton*)LevelInfo[2],g_strdup_printf("ROUND: %d/15",roundnr));
@@ -110,44 +110,41 @@ static void updatePlansza(){//zastapic label na image! (tam gdzie trzeba...)
 	for(int i=0; i<N+2; i++)
 		for(int j=0; j<N+2; j++){
 			if(poziomy[Q].tab[i][j].isWall){
+				gtk_button_set_label((GtkButton*)TabButton[i][j],"#");
+				gtk_widget_set_name(TabButton[i][j],"wall");
 				continue;
 			}
-			//gtk_widget_queue_draw(TabButton[i][j]);//?
 			if(poziomy[Q].tab[i][j].road){
+				gtk_widget_set_name(TabButton[i][j],"road");
 				int life=poziomy[Q].ROAD[poziomy[Q].tab[i][j].nr-1].enemy;
 
 				if(life==0)
-					gtk_button_set_label((GtkButton*)TabButton[i][j],"R");
+					gtk_button_set_label((GtkButton*)TabButton[i][j],"_");
 				else{
-					//printf("%d\n",life);
 					gtk_button_set_label((GtkButton*)TabButton[i][j],g_strdup_printf("%d",life));	
-					//gtk_button_set_label((GtkButton*)TabButton[i][j],"r");
 				}
 				continue;
 			}
 			if(poziomy[Q].tab[i][j].land){
 				gtk_button_set_label((GtkButton*)TabButton[i][j],".");
-				//gtk_button_set_image((GtkButton*)TabButton[i][j],(GtkWidget*)TabImage[0]);
+				gtk_widget_set_name(TabButton[i][j],"land");
 				continue;
 			}
 		}
-/*	//enemy
-	int i=0;
-	while(poziomy[Q].ROAD[i].x!=poziomy[Q].Fx || poziomy[Q].ROAD[i].y!=poziomy[Q].Fy){
-		if(poziomy[Q].ROAD[i].enemy){
-			gtk_button_set_label((GtkButton*)TabButton[poziomy[Q].ROAD[i].x][poziomy[Q].ROAD[i].y],g_strdup_printf("%d",poziomy[Q].ROAD[i].enemy));
-		}//czeka do konca petli i dopiero pokazuje calosc + nie robi ostatniego F
-		i++;
-	}
-			gtk_button_set_label((GtkButton*)TabButton[poziomy[Q].ROAD[i].x][poziomy[Q].ROAD[i].y],g_strdup_printf("%d",poziomy[Q].ROAD[i].enemy));
-*/
-
-//czytac o gtk_widget_get_frame_clock() i gtk_widget_queue_draw()!!!!!!
-
+	
 	//tower
 	struct tower *t=poziomy[Q].tow;
-	while(t!=NULL){//trzeba dokonczyc tower
-		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("T%d",t->level));
+	while(t!=NULL){
+		if(t->type==1)
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("B%d",t->level));
+		if(t->type==2)
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("C%d",t->level));
+		if(t->type==3)
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("S%d",t->level));
+		if(t->type==4)
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("V%d",t->level));
+		if(t->type==5)
+		gtk_button_set_label((GtkButton*)TabButton[t->x][t->y],g_strdup_printf("D%d",t->level));
 		t=t->next;
 	}
 }
@@ -504,12 +501,13 @@ static struct tower* findwieza(){
 
 static void zamkupg(){
 	//gtk_button_set_label() albo styl do normy
+	updatePlansza();
 	deswin();
 }
 
 static void upp(){
 	struct tower *t=findwieza();
-	
+
 	double koszt=t->level;
 	if(koszt==3)koszt*=3;//?
 	if(t->type==1)koszt+=100;
@@ -637,8 +635,19 @@ static void clickUpgrade(){
 		deswin();
 	
 	struct tower *t=findwieza();
-
-	//zmien label czy podswietl w style TabButton[X][Y]
+	
+	int ran=0;
+	if(t->type==1)ran=3;
+	if(t->type==2)ran=2;
+	if(t->type==3)ran=1;
+	if(t->type==4)ran=1;
+	if(t->type==5)ran=2;
+	
+	for(int i=0; i<1+2*ran; i++)
+		for(int j=0; j<1+2*ran; j++)
+			if(X+i-ran>=0 && Y+j-ran>=0 && X+i-ran<N+2 && Y+j-ran<N+2)
+				gtk_widget_set_name(TabButton[X+i-ran][Y+j-ran],"towran");
+	gtk_widget_set_name(TabButton[X][Y],"seltow");
 
 	GtkWidget *okno=gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -1099,7 +1108,6 @@ static bool runda(){
 		else{
 			poziomy[Q].ROAD[0].enemy=enemyPattern[iteri++];
 		}
-//timeout odpalic na iletur, ale calosc miec w while i tutaj odsiewac szybko druid
 		struct tower *t=poziomy[Q].tow;
 		while(t!=NULL){
 			if(t->type==5){
@@ -1107,11 +1115,6 @@ static bool runda(){
 				continue;
 			}
 			ataktower(t,t->iletur);
-//			int tmp=t->iletur;
-//			g_timeout_add(20,(GSourceFunc)ataktower,t);
-			//printf("1tmp=%d,t=%d\n",tmp,t->iletur);
-//			t->iletur=tmp;
-			//printf("2tmp=%d,t=%d\n",tmp,t->iletur);
 			t=t->next;
 		}
 	updatePlansza();
@@ -1126,12 +1129,8 @@ static void ROUND(){
 			roundcount++;
 		i++;
 	}
-	//ustawic bool trwa runda
-	//i dodac to do funkcji
-	//fajnie by bylo multi threading
 	iteri=i;
-	g_timeout_add(200,(GSourceFunc)runda,NULL);//dlaczego konczy ROUND ale dalej robi round?
-	//juz nie trwa runda
+	g_timeout_add(200,(GSourceFunc)runda,NULL);
 }
 
 static void init(){
@@ -1208,7 +1207,7 @@ static void init(){
 	
 	//graphic init
 
-	TabImage[0]=gtk_image_new_from_file("land.png");//mniejsze obrazy i dokonczyc
+//	TabImage[0]=gtk_image_new_from_file("land.png");//mniejsze obrazy i dokonczyc
 
 	//box init
 
@@ -1314,7 +1313,17 @@ static void init(){
 	UpgradeButton[7]=gtk_button_new_with_label("RETURN");
 	g_signal_connect(G_OBJECT(UpgradeButton[7]),"clicked",G_CALLBACK(hideup),NULL);
 	gtk_box_pack_start((GtkBox*)Box[1],UpgradeButton[7],TRUE,FALSE,0);
-
+/*
+	gtk_widget_set_name(Box[1],"land");
+	gtk_widget_set_name(IleStar,"road");
+	gtk_widget_set_name(UpgradeButton[0],"road");
+	gtk_widget_set_name(UpgradeButton[1],"road");
+	gtk_widget_set_name(UpgradeButton[2],"road");
+	gtk_widget_set_name(UpgradeButton[3],"road");
+	gtk_widget_set_name(UpgradeButton[4],"road");
+	gtk_widget_set_name(UpgradeButton[5],"road");
+	gtk_widget_set_name(UpgradeButton[6],"road");
+*/
 	//achievement init
 	for(int i=0; i<6; i++){
 		AchievementButton[i]=gtk_button_new_with_label("X");
